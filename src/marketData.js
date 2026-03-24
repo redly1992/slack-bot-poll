@@ -1,13 +1,15 @@
 const ccxt = require('ccxt');
 
 // Exchanges with known geo-restrictions on cloud IPs (e.g. GitHub Actions / Azure)
-const GEO_RESTRICTED = ['binance', 'binanceus'];
+const GEO_RESTRICTED = ['binance', 'binanceus', 'bybit'];
+
+// Exchange to use as fallback in CI when the configured exchange is geo-restricted
+const CI_FALLBACK_EXCHANGE = process.env.CI_FALLBACK_EXCHANGE || 'kucoin';
 
 class MarketDataFetcher {
   constructor(exchangeName = 'bybit') {
-    // Fallback to bybit if a geo-restricted exchange is requested in CI
     const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-    const resolved = (isCI && GEO_RESTRICTED.includes(exchangeName)) ? 'bybit' : exchangeName;
+    const resolved = (isCI && GEO_RESTRICTED.includes(exchangeName)) ? CI_FALLBACK_EXCHANGE : exchangeName;
 
     if (resolved !== exchangeName) {
       console.log(`⚠️  ${exchangeName} is geo-restricted on cloud runners. Using ${resolved} instead.`);
