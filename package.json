@@ -1,0 +1,35 @@
+{
+  "name": "trading-bot-notifier",
+  "version": "1.0.0",
+  "description": "Trading bot notification system with Telegram and Instagram integration and GitHub Actions deployment",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "test": "node src/index.js --dry-run",
+    "setup-telegram": "node setup-telegram.js",
+    "verify": "node verify-system.cjs",
+    "list-models": "node list-gemini-models.js"
+  },
+  "keywords": [
+    "trading",
+    "bot",
+    "telegram",
+    "instagram",
+    "cryptocurrency",
+    "technical-analysis",
+    "notifications"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "ccxt": "^4.2.0",
+    "dotenv": "^16.4.0",
+    "instagram-private-api": "^1.46.1",
+    "js-yaml": "^4.1.0",
+    "node-telegram-bot-api": "^0.64.0",
+    "openai": "^6.32.0",
+    "technicalindicators": "^3.1.0"
+  }
+}
