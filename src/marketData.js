@@ -1,8 +1,20 @@
 const ccxt = require('ccxt');
 
+// Exchanges with known geo-restrictions on cloud IPs (e.g. GitHub Actions / Azure)
+const GEO_RESTRICTED = ['binance', 'binanceus'];
+
 class MarketDataFetcher {
-  constructor(exchangeName = 'binance') {
-    this.exchange = new ccxt[exchangeName]({
+  constructor(exchangeName = 'bybit') {
+    // Fallback to bybit if a geo-restricted exchange is requested in CI
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+    const resolved = (isCI && GEO_RESTRICTED.includes(exchangeName)) ? 'bybit' : exchangeName;
+
+    if (resolved !== exchangeName) {
+      console.log(`⚠️  ${exchangeName} is geo-restricted on cloud runners. Using ${resolved} instead.`);
+    }
+
+    this.exchangeName = resolved;
+    this.exchange = new ccxt[resolved]({
       enableRateLimit: true,
       options: {
         defaultType: 'spot',

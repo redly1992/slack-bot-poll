@@ -33,7 +33,7 @@ jobs:
           AI_PROVIDER: gemini
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-2.5-flash
-          EXCHANGE: binance
+          EXCHANGE: bybit
           INSTRUCTION_FILE: instructions/default.md
           DRY_RUN: false
         run: npm start
