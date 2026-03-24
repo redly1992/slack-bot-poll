@@ -37,6 +37,13 @@ indicators:
     enabled: true
     period: 20
     stdDev: 2
+  
+  stochastic:
+    enabled: true
+    period: 14
+    signalPeriod: 3
+    overbought: 80
+    oversold: 20
 
 # Trading Signal Rules
 # Conditions are evaluated as AND (all must be true for signal)

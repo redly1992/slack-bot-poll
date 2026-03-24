@@ -53,13 +53,33 @@ class TelegramNotifier {
    */
   formatSignalMessage(symbol, signalType, indicators, reasons, emoji, options = {}) {
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const { trendContext, riskManagement } = options;
     
     let message = `${emoji} *${signalType} SIGNAL* ${emoji}\n\n`;
     message += `*Pair:* ${symbol}\n`;
     message += `*Price:* $${indicators.price.toFixed(2)}\n`;
-    message += `*Time:* ${timestamp} UTC\n\n`;
+    message += `*Time:* ${timestamp} UTC\n`;
+
+    // Trend context
+    if (trendContext) {
+      const trendEmoji = { BULLISH: '📈', BEARISH: '📉', NEUTRAL: '➡️', MIXED: '↔️' }[trendContext.overallTrend] || '➡️';
+      message += `\n*Trend Context:*\n`;
+      message += `${trendEmoji} Overall: ${trendContext.overallTrend}\n`;
+      message += `• Daily (1D): ${trendContext.daily.trend}\n`;
+      message += `• 4H: ${trendContext.h4.trend}\n`;
+    }
+
+    // Risk management (SL / TP)
+    if (riskManagement) {
+      message += `\n*Risk Management (1.5x ATR):*\n`;
+      message += `🛑 Stop Loss: $${riskManagement.stopLoss.toFixed(2)}\n`;
+      message += `🎯 TP1 (1:1.5): $${riskManagement.tp1.toFixed(2)} *(50% position)*\n`;
+      message += `🎯 TP2 (1:2.5): $${riskManagement.tp2.toFixed(2)} *(30% position)*\n`;
+      message += `🎯 TP3 (1:4.0): $${riskManagement.tp3.toFixed(2)} *(20% position)*\n`;
+      message += `📏 Risk: $${riskManagement.riskAmount.toFixed(2)} | ATR: ${riskManagement.atr.toFixed(4)}\n`;
+    }
     
-    message += `*Indicators:*\n`;
+    message += `\n*Indicators:*\n`;
     if (indicators.rsi !== undefined) {
       message += `• RSI: ${indicators.rsi.toFixed(2)}\n`;
     }
@@ -76,6 +96,9 @@ class TelegramNotifier {
       message += `• BB Upper: ${indicators.bollinger.upper.toFixed(2)}\n`;
       message += `• BB Middle: ${indicators.bollinger.middle.toFixed(2)}\n`;
       message += `• BB Lower: ${indicators.bollinger.lower.toFixed(2)}\n`;
+    }
+    if (indicators.stochastic) {
+      message += `• Stochastic %K: ${indicators.stochastic.k.toFixed(2)} | %D: ${indicators.stochastic.d.toFixed(2)}\n`;
     }
 
     message += `\n*Signal Reasons:*\n`;
@@ -97,7 +120,7 @@ class TelegramNotifier {
   /**
    * Send a market update (HOLD) notification - always fires
    */
-  async sendMarketUpdate(symbol, indicators, decision) {
+  async sendMarketUpdate(symbol, indicators, decision, trendContext = null, riskManagement = null) {
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
     const riskEmoji = { LOW: '🟢', MEDIUM: '🟡', HIGH: '🔴' }[decision.riskLevel] || '⚪';
     const trendEmoji = indicators.ema && indicators.ema.fast > indicators.ema.slow ? '📈' : '📉';
@@ -106,9 +129,32 @@ class TelegramNotifier {
     message += `*Pair:* ${symbol}\n`;
     message += `*Signal:* HOLD\n`;
     message += `*Price:* $${indicators.price.toFixed(2)} ${trendEmoji}\n`;
-    message += `*Time:* ${timestamp} UTC\n\n`;
+    message += `*Time:* ${timestamp} UTC\n`;
 
-    message += `*Indicators:*\n`;
+    if (trendContext) {
+      const overallEmoji = { BULLISH: '📈', BEARISH: '📉', NEUTRAL: '➡️', MIXED: '↔️' }[trendContext.overallTrend] || '➡️';
+      message += `\n*Trend Context:*\n`;
+      message += `${overallEmoji} Overall: ${trendContext.overallTrend}\n`;
+      message += `• Daily (1D): ${trendContext.daily.trend}\n`;
+      message += `• 4H: ${trendContext.h4.trend}\n`;
+    }
+
+    // Potential entry / SL / TP even on HOLD (watch levels)
+    if (riskManagement) {
+      const dirEmoji = riskManagement.direction === 'BUY' ? '🟢' : '🔴';
+      const label = riskManagement.isWatchOnly
+        ? `*📋 Watch Levels (${riskManagement.direction} if setup confirms):*`
+        : `*Risk Management:*`;
+      message += `\n${label}\n`;
+      message += `📍 Entry: $${indicators.price.toFixed(2)}\n`;
+      message += `🛑 Stop Loss: $${riskManagement.stopLoss.toFixed(2)} _(1.5× ATR)_\n`;
+      message += `${dirEmoji} TP1 (1:1.5): $${riskManagement.tp1.toFixed(2)} *(50% position)*\n`;
+      message += `${dirEmoji} TP2 (1:2.5): $${riskManagement.tp2.toFixed(2)} *(30% position)*\n`;
+      message += `${dirEmoji} TP3 (1:4.0): $${riskManagement.tp3.toFixed(2)} *(20% position)*\n`;
+      message += `📏 Risk/unit: $${riskManagement.riskAmount.toFixed(2)} | ATR: ${riskManagement.atr.toFixed(4)}\n`;
+    }
+
+    message += `\n*Indicators:*\n`;
     if (indicators.rsi !== undefined) {
       const rsiStatus = indicators.rsi < 35 ? ' 🔵 near oversold' : indicators.rsi > 65 ? ' 🔴 near overbought' : ' ➡️ neutral';
       message += `• RSI: ${indicators.rsi.toFixed(2)}${rsiStatus}\n`;
@@ -124,6 +170,9 @@ class TelegramNotifier {
     }
     if (indicators.bollinger) {
       message += `• BB: ${indicators.bollinger.lower.toFixed(2)} – ${indicators.bollinger.upper.toFixed(2)}\n`;
+    }
+    if (indicators.stochastic) {
+      message += `• Stochastic %K/%D: ${indicators.stochastic.k.toFixed(2)} / ${indicators.stochastic.d.toFixed(2)}\n`;
     }
 
     if (decision.aiAnalysis) {

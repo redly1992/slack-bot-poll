@@ -1,4 +1,4 @@
-const { RSI, EMA, MACD, BollingerBands } = require('technicalindicators');
+const { RSI, EMA, MACD, BollingerBands, Stochastic, ATR } = require('technicalindicators');
 
 class IndicatorCalculator {
   /**
@@ -97,6 +97,38 @@ class IndicatorCalculator {
   }
 
   /**
+   * Calculate Stochastic Oscillator
+   * @param {Array} ohlcv - OHLCV data
+   * @param {Object} config - Stochastic configuration
+   * @returns {Object} %K and %D values
+   */
+  static calculateStochastic(ohlcv, config = {}) {
+    const { period = 14, signalPeriod = 3 } = config;
+
+    if (ohlcv.length < period + signalPeriod) {
+      throw new Error(`Not enough data for Stochastic calculation`);
+    }
+
+    const highs = ohlcv.map(c => c.high);
+    const lows = ohlcv.map(c => c.low);
+    const closes = ohlcv.map(c => c.close);
+
+    const stochValues = Stochastic.calculate({
+      high: highs,
+      low: lows,
+      close: closes,
+      period: period,
+      signalPeriod: signalPeriod,
+    });
+
+    const current = stochValues[stochValues.length - 1];
+    return {
+      k: current.k,
+      d: current.d,
+    };
+  }
+
+  /**
    * Calculate all indicators based on config
    * @param {Array} ohlcv - OHLCV data
    * @param {Object} indicatorConfig - Indicator configuration
@@ -156,7 +188,99 @@ class IndicatorCalculator {
       }
     }
 
+    // Stochastic
+    if (indicatorConfig.stochastic?.enabled) {
+      try {
+        results.stochastic = this.calculateStochastic(ohlcv, {
+          period: indicatorConfig.stochastic.period,
+          signalPeriod: indicatorConfig.stochastic.signalPeriod,
+        });
+      } catch (error) {
+        console.error(`Stochastic calculation error: ${error.message}`);
+      }
+    }
+
     return results;
+  }
+
+  /**
+   * Calculate ATR (Average True Range) for stop-loss sizing
+   * @param {Array} ohlcv - OHLCV data
+   * @param {number} period - ATR period (default: 14)
+   * @returns {number} Current ATR value
+   */
+  static calculateATR(ohlcv, period = 14) {
+    if (ohlcv.length < period + 1) {
+      throw new Error(`Not enough data for ATR calculation. Need ${period + 1}, got ${ohlcv.length}`);
+    }
+
+    const atrValues = ATR.calculate({
+      high: ohlcv.map(c => c.high),
+      low: ohlcv.map(c => c.low),
+      close: ohlcv.map(c => c.close),
+      period,
+    });
+
+    return atrValues[atrValues.length - 1];
+  }
+
+  /**
+   * Determine trend direction from OHLCV data using EMA crossover + price position
+   * @param {Array} ohlcv - OHLCV data (at least 50 candles recommended)
+   * @returns {{ trend: 'BULLISH'|'BEARISH'|'NEUTRAL', ema21: number, ema50: number }}
+   */
+  static determineTrend(ohlcv) {
+    const closes = ohlcv.map(c => c.close);
+    const price = closes[closes.length - 1];
+
+    try {
+      const ema21Values = EMA.calculate({ values: closes, period: 21 });
+      const ema50Values = EMA.calculate({ values: closes, period: 50 });
+
+      const ema21 = ema21Values[ema21Values.length - 1];
+      const ema50 = ema50Values[ema50Values.length - 1];
+
+      let trend = 'NEUTRAL';
+      if (price > ema21 && ema21 > ema50) trend = 'BULLISH';
+      else if (price < ema21 && ema21 < ema50) trend = 'BEARISH';
+
+      return { trend, ema21, ema50, price };
+    } catch {
+      return { trend: 'NEUTRAL', ema21: null, ema50: null, price };
+    }
+  }
+
+  /**
+   * Calculate stop-loss price using ATR multiplier
+   * @param {number} entryPrice
+   * @param {number} atr
+   * @param {'BUY'|'SELL'} signal
+   * @param {number} multiplier - ATR multiplier (1.5 for scalping per strategy)
+   * @returns {number}
+   */
+  static calculateStopLoss(entryPrice, atr, signal, multiplier = 1.5) {
+    if (signal === 'BUY') return entryPrice - atr * multiplier;
+    if (signal === 'SELL') return entryPrice + atr * multiplier;
+    return null;
+  }
+
+  /**
+   * Calculate take-profit levels following the strategy's 1:1.5 / 1:2.5 / 1:4 RR framework
+   * @param {number} entryPrice
+   * @param {number} stopLoss
+   * @param {'BUY'|'SELL'} signal
+   * @returns {{ tp1: number, tp2: number, tp3: number, riskAmount: number }}
+   */
+  static calculateTakeProfits(entryPrice, stopLoss, signal) {
+    const riskAmount = Math.abs(entryPrice - stopLoss);
+    const direction = signal === 'BUY' ? 1 : -1;
+
+    return {
+      riskAmount,
+      tp1: entryPrice + direction * riskAmount * 1.5,
+      tp2: entryPrice + direction * riskAmount * 2.5,
+      tp3: entryPrice + direction * riskAmount * 4.0,
+    };
   }
 }
 

@@ -82,6 +82,11 @@ class SignalEvaluator {
         expression = expression.replace(/\bbollinger\.lower\b/g, indicators.bollinger.lower || 0);
       }
 
+      if (indicators.stochastic) {
+        expression = expression.replace(/\bstochastic\.k\b/g, indicators.stochastic.k || 0);
+        expression = expression.replace(/\bstochastic\.d\b/g, indicators.stochastic.d || 0);
+      }
+
       // Evaluate the expression
       // eslint-disable-next-line no-eval
       return eval(expression);

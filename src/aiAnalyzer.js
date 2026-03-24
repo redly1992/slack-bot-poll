@@ -152,11 +152,6 @@ Your response must be valid JSON with this structure:
     }
   }
 
-  /**
-   * Build the analysis prompt for the AI.
-   * strategyContent (from strategy.md) becomes the persona/system context.
-   * Market data is appended so the AI can reason against it.
-   */
   buildAnalysisPrompt(symbol, indicators, ohlcv, config) {
     const recentCandles = ohlcv.slice(-10);
     const priceChange = ((indicators.price - ohlcv[0].close) / ohlcv[0].close * 100).toFixed(2);
@@ -168,10 +163,22 @@ Your response must be valid JSON with this structure:
       prompt += '---\n\n';
     }
 
+    // --- Higher timeframe trend context ---
+    if (config._trendContext) {
+      const { daily, h4, overallTrend } = config._trendContext;
+      prompt += `=== HIGHER TIMEFRAME TREND (Big Picture) ===\n`;
+      prompt += `Daily (1D) Trend: ${daily.trend}`;
+      if (daily.ema21) prompt += ` | EMA21: ${daily.ema21.toFixed(2)} | EMA50: ${daily.ema50?.toFixed(2)}`;
+      prompt += `\n4H Trend: ${h4.trend}`;
+      if (h4.ema21) prompt += ` | EMA21: ${h4.ema21.toFixed(2)} | EMA50: ${h4.ema50?.toFixed(2)}`;
+      prompt += `\nOverall Trend: ${overallTrend}\n`;
+      prompt += `Strategy Rule: Only enter LONG if overall trend is BULLISH. Only enter SHORT/SELL if BEARISH. HOLD if NEUTRAL or MIXED.\n\n`;
+    }
+
     // --- Live market data ---
-    prompt += `=== CURRENT MARKET DATA: ${symbol} ===\n`;
+    prompt += `=== CURRENT MARKET DATA: ${symbol} (${config.timeframe || '15m'} entry timeframe) ===\n`;
     prompt += `Price: $${indicators.price.toFixed(2)}\n`;
-    prompt += `Price Change: ${priceChange}% over ${ohlcv.length} candles (${config.timeframe} each)\n\n`;
+    prompt += `Price Change: ${priceChange}% over ${ohlcv.length} candles\n\n`;
 
     prompt += `=== TECHNICAL INDICATORS ===\n`;
     if (indicators.rsi !== undefined) {
@@ -194,6 +201,12 @@ Your response must be valid JSON with this structure:
       if (indicators.price < indicators.bollinger.lower) prompt += `  → Price below lower band (potential bounce)\n`;
       else if (indicators.price > indicators.bollinger.upper) prompt += `  → Price above upper band (potential pullback)\n`;
     }
+    if (indicators.stochastic) {
+      prompt += `Stochastic %K/%D: ${indicators.stochastic.k.toFixed(2)} / ${indicators.stochastic.d.toFixed(2)}`;
+      if (indicators.stochastic.k < 20) prompt += ` → Oversold`;
+      else if (indicators.stochastic.k > 80) prompt += ` → Overbought`;
+      prompt += '\n';
+    }
 
     prompt += `\n=== RECENT PRICE ACTION (last 10 candles) ===\n`;
     recentCandles.forEach((candle, i) => {
@@ -203,7 +216,7 @@ Your response must be valid JSON with this structure:
 
     // --- JSON response instruction ---
     prompt += `\n=== RESPONSE FORMAT ===\n`;
-    prompt += `Based on all the above, respond ONLY with valid JSON:\n`;
+    prompt += `Based on all the above (respecting the higher timeframe trend direction), respond ONLY with valid JSON:\n`;
     prompt += `{\n`;
     prompt += `  "signal": "BUY" | "SELL" | "HOLD",\n`;
     prompt += `  "confidence": <0-100>,\n`;

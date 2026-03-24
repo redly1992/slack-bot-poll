@@ -86,6 +86,35 @@ class TradingBot {
   }
 
   /**
+   * Fetch and analyze higher timeframe trends (1d + 4h)
+   * @returns {{ daily: Object, h4: Object, overallTrend: string }}
+   */
+  async getHigherTimeframeTrend(pair) {
+    try {
+      const [daily, h4] = await Promise.all([
+        this.marketData.fetchOHLCV(pair, '1d', 60),
+        this.marketData.fetchOHLCV(pair, '4h', 60),
+      ]);
+
+      const dailyTrend = IndicatorCalculator.determineTrend(daily);
+      const h4Trend = IndicatorCalculator.determineTrend(h4);
+
+      // Overall trend = both agree → strong signal; mixed → neutral
+      let overallTrend = 'NEUTRAL';
+      if (dailyTrend.trend === 'BULLISH' && h4Trend.trend === 'BULLISH') overallTrend = 'BULLISH';
+      else if (dailyTrend.trend === 'BEARISH' && h4Trend.trend === 'BEARISH') overallTrend = 'BEARISH';
+      else if (dailyTrend.trend !== h4Trend.trend && dailyTrend.trend !== 'NEUTRAL' && h4Trend.trend !== 'NEUTRAL') {
+        overallTrend = 'MIXED';
+      }
+
+      return { daily: dailyTrend, h4: h4Trend, overallTrend };
+    } catch (error) {
+      console.error(`  ⚠️  Could not fetch higher timeframe data: ${error.message}`);
+      return { daily: { trend: 'NEUTRAL' }, h4: { trend: 'NEUTRAL' }, overallTrend: 'NEUTRAL' };
+    }
+  }
+
+  /**
    * Run the bot analysis
    */
   async run() {
@@ -131,58 +160,102 @@ class TradingBot {
     try {
       console.log(`\n📈 Analyzing ${pair}...`);
 
-      // Fetch market data
-      const ohlcv = await this.marketData.fetchOHLCV(pair, timeframe, candleLimit);
-      console.log(`  Fetched ${ohlcv.length} candles`);
+      // --- Step 1: Higher timeframe trend (1d + 4h) ---
+      console.log(`  🔭 Fetching higher timeframe trend (1d / 4h)...`);
+      const trendContext = await this.getHigherTimeframeTrend(pair);
+      const trendEmoji = { BULLISH: '📈', BEARISH: '📉', NEUTRAL: '➡️', MIXED: '↔️' }[trendContext.overallTrend] || '➡️';
+      console.log(`  ${trendEmoji} Trend → Daily: ${trendContext.daily.trend} | 4H: ${trendContext.h4.trend} | Overall: ${trendContext.overallTrend}`);
 
-      // Calculate indicators
+      // --- Step 2: 15m entry data ---
+      const ohlcv = await this.marketData.fetchOHLCV(pair, timeframe, candleLimit);
+      console.log(`  Fetched ${ohlcv.length} candles (${timeframe})`);
+
+      // --- Step 3: Calculate indicators ---
       const indicators = IndicatorCalculator.calculateAll(ohlcv, indicatorConfig);
       console.log(`  Current price: $${indicators.price.toFixed(2)}`);
-      
-      if (indicators.rsi) {
-        console.log(`  RSI: ${indicators.rsi.toFixed(2)}`);
-      }
-      if (indicators.ema) {
-        console.log(`  EMA Fast: ${indicators.ema.fast.toFixed(2)} | Slow: ${indicators.ema.slow.toFixed(2)}`);
+      if (indicators.rsi) console.log(`  RSI: ${indicators.rsi.toFixed(2)}`);
+      if (indicators.ema) console.log(`  EMA Fast: ${indicators.ema.fast.toFixed(2)} | Slow: ${indicators.ema.slow.toFixed(2)}`);
+      if (indicators.stochastic) {
+        console.log(`  Stochastic %K: ${indicators.stochastic.k.toFixed(2)} | %D: ${indicators.stochastic.d.toFixed(2)}`);
       }
 
-      // Evaluate signals with technical indicators
+      // --- Step 4: ATR-based stop-loss ---
+      let atr = null;
+      try {
+        atr = IndicatorCalculator.calculateATR(ohlcv, 14);
+        console.log(`  ATR(14): ${atr.toFixed(4)}`);
+      } catch (e) {
+        console.error(`  ATR error: ${e.message}`);
+      }
+
+      // --- Step 5: Technical signal evaluation ---
       const technicalEvaluation = SignalEvaluator.evaluate(indicators, signalRules, indicatorConfig);
 
-      // AI Analysis (if enabled)
+      // --- Step 6: AI or technical decision ---
       let finalDecision;
       if (this.useAI) {
         console.log(`  🤖 Running AI analysis...`);
-        // Pass strategy.md content so AI knows its persona/rules
         const enrichedConfig = {
           ...rawConfig,
-          _strategyContent: this.parser.getStrategyContent()
+          _strategyContent: this.parser.getStrategyContent(),
+          _trendContext: trendContext,
         };
         const aiAnalysis = await this.aiAnalyzer.analyzeMarket(pair, indicators, ohlcv, enrichedConfig);
-        
+
         console.log(`  🤖 AI Signal: ${aiAnalysis.signal} (${aiAnalysis.confidence}% confidence)`);
-        if (aiAnalysis.marketAnalysis) {
-          console.log(`  📊 ${aiAnalysis.marketAnalysis}`);
-        }
-        
-        // Use AI signal directly (no longer requires all technical conditions)
+        if (aiAnalysis.marketAnalysis) console.log(`  📊 ${aiAnalysis.marketAnalysis}`);
+
         finalDecision = {
           decision: aiAnalysis.signal,
           source: 'ai',
           reasons: aiAnalysis.reasoning || [],
           confidence: aiAnalysis.confidence,
           aiAnalysis: aiAnalysis.marketAnalysis,
-          riskLevel: aiAnalysis.riskLevel
+          riskLevel: aiAnalysis.riskLevel,
         };
-        console.log(`  🎯 Final Decision: ${finalDecision.decision} (${finalDecision.source})`);
       } else {
-        // Use technical indicators only
         finalDecision = {
           decision: technicalEvaluation.buy ? 'BUY' : technicalEvaluation.sell ? 'SELL' : 'HOLD',
           source: 'technical',
           reasons: technicalEvaluation.buy ? technicalEvaluation.buyReasons : technicalEvaluation.sellReasons,
-          confidence: 50
+          confidence: 50,
         };
+      }
+
+      // --- Step 7: Filter by higher timeframe trend ---
+      if (finalDecision.decision === 'BUY' && trendContext.overallTrend === 'BEARISH') {
+        console.log(`  ⛔ BUY signal filtered out — higher TF trend is BEARISH`);
+        finalDecision.decision = 'HOLD';
+        finalDecision.reasons = ['BUY suppressed: higher timeframe trend is bearish'];
+        finalDecision.confidence = Math.min(finalDecision.confidence, 30);
+      } else if (finalDecision.decision === 'SELL' && trendContext.overallTrend === 'BULLISH') {
+        console.log(`  ⛔ SELL signal filtered out — higher TF trend is BULLISH`);
+        finalDecision.decision = 'HOLD';
+        finalDecision.reasons = ['SELL suppressed: higher timeframe trend is bullish'];
+        finalDecision.confidence = Math.min(finalDecision.confidence, 30);
+      }
+
+      // --- Step 8: Calculate SL / TP (always — even for HOLD, show trend-aligned levels) ---
+      let riskManagement = null;
+      if (atr) {
+        // For active signals use the signal direction.
+        // For HOLD, derive the watch direction from the higher TF trend so the
+        // trader knows where to place orders if/when a setup forms.
+        let rmDirection = finalDecision.decision;
+        let isWatchOnly = false;
+        if (rmDirection === 'HOLD') {
+          if (trendContext.overallTrend === 'BULLISH') { rmDirection = 'BUY'; isWatchOnly = true; }
+          else if (trendContext.overallTrend === 'BEARISH') { rmDirection = 'SELL'; isWatchOnly = true; }
+        }
+
+        if (rmDirection !== 'HOLD') {
+          const stopLoss = IndicatorCalculator.calculateStopLoss(indicators.price, atr, rmDirection, 1.5);
+          const { tp1, tp2, tp3, riskAmount } = IndicatorCalculator.calculateTakeProfits(indicators.price, stopLoss, rmDirection);
+          riskManagement = { stopLoss, tp1, tp2, tp3, riskAmount, atr, direction: rmDirection, isWatchOnly };
+          const slLabel = isWatchOnly ? '🔍 Watch' : '🛑 Stop Loss';
+          console.log(`  ${slLabel} (${rmDirection}): $${stopLoss.toFixed(2)} | 1.5×ATR=$${(atr * 1.5).toFixed(4)}`);
+          console.log(`  🎯 TP1: $${tp1.toFixed(2)} | TP2: $${tp2.toFixed(2)} | TP3: $${tp3.toFixed(2)}`);
+        }
       }
 
       // Log signal reasons
@@ -191,14 +264,15 @@ class TradingBot {
         console.log(`  ${icon} ${finalDecision.decision} signal`);
         finalDecision.reasons.forEach(reason => console.log(`    - ${reason}`));
       }
+      console.log(`  🎯 Final Decision: ${finalDecision.decision} (${finalDecision.source})`);
 
-      // Always send Telegram notification (BUY / SELL / HOLD)
+      // --- Step 9: Send notification ---
       if (!this.dryRun && notificationSettings.enabled) {
         for (const { name, notifier } of this.notifiers) {
           const notifierEnabled = notificationSettings[name.toLowerCase()] !== false;
           if (notifierEnabled) {
             if (finalDecision.decision === 'HOLD') {
-              await notifier.sendMarketUpdate(pair, indicators, finalDecision);
+              await notifier.sendMarketUpdate(pair, indicators, finalDecision, trendContext, riskManagement);
             } else {
               await notifier.sendSignal(
                 pair,
@@ -209,7 +283,9 @@ class TradingBot {
                   cooldownMinutes: notificationSettings.cooldownMinutes,
                   aiAnalysis: finalDecision.aiAnalysis,
                   confidence: finalDecision.confidence,
-                  riskLevel: finalDecision.riskLevel
+                  riskLevel: finalDecision.riskLevel,
+                  trendContext,
+                  riskManagement,
                 }
               );
             }
