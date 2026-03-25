@@ -4,9 +4,13 @@ A JavaScript-based trading bot that monitors cryptocurrency pairs, calculates te
 
 ## Features
 
-✅ **🤖 AI-Powered Analysis (NEW!)** - OpenAI GPT models analyze market data with natural language reasoning  
+✅ **🤖 AI-Powered Analysis (NEW!)** - DeepSeek, Gemini, or OpenAI models analyze market data with natural language reasoning  
+✅ **📊 Price Prediction Tool (NEW!)** - Get LONG/SHORT signals with entry, stop loss, and take profit levels  
+✅ **📱 Telegram Prediction Alerts (NEW!)** - Automatic notifications sent to Telegram when predictions run  
+✅ **⚡ GitHub Actions Integration (NEW!)** - Automated predictions every 30 minutes
 ✅ **Multi-pair monitoring** - Track multiple trading pairs simultaneously  
-✅ **Technical indicators** - RSI, EMA, MACD, Bollinger Bands  
+✅ **Technical indicators** - RSI, EMA, MACD, Bollinger Bands, Stochastic, ATR  
+✅ **Higher timeframe analysis** - Trend confirmation with 1D and 4H charts  
 ✅ **Markdown configuration** - Define strategies in human-readable markdown files  
 ✅ **Telegram notifications** - Real-time alerts with detailed signal information  
 ✅ **Instagram DM (optional)** - Bonus notification channel  
@@ -51,7 +55,53 @@ INSTRUCTION_FILE=instructions/default.md
 DRY_RUN=false
 ```
 
-### 4. Run Locally
+### 4. Configure AI (Optional but Recommended)
+
+Add your AI provider API key to `.env`:
+
+```env
+# DeepSeek (Recommended - Cost-effective)
+AI_ENABLED=true
+AI_PROVIDER=deepseek
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+
+# Or use Gemini (Free tier available)
+# AI_PROVIDER=gemini
+# GEMINI_API_KEY=your_gemini_key_here
+
+# Or use OpenAI
+# AI_PROVIDER=openai
+# OPENAI_API_KEY=your_openai_key_here
+```
+
+**Get DeepSeek API Key**: Visit [https://platform.deepseek.com](https://platform.deepseek.com)
+
+### 5. Run Price Predictions
+
+Get instant trading signals for BTC and ETH:
+
+```bash
+npm run predict
+```
+
+Or specify custom pairs:
+
+```bash
+npm run predict BTC ETH SOL BNB
+```
+
+**Output includes**:
+- 📌 Trading pair name
+- 🎯 Signal: BUY / SELL / HOLD
+- 💰 Entry price
+- 🛑 Stop loss level (ATR-based)
+- 🎯 Take profit targets (TP1, TP2, TP3)
+- 📊 AI confidence score and reasoning
+- 📈 Higher timeframe trend analysis
+
+See [`PREDICT_QUICKSTART.md`](PREDICT_QUICKSTART.md) for details.
+
+### 6. Run Bot Locally
 
 Test in dry-run mode (no notifications sent):
 
@@ -64,6 +114,36 @@ Run live:
 ```bash
 npm start
 ```
+
+## GitHub Actions Deployment
+
+### Automated Price Predictions
+
+The bot can run automatically on GitHub Actions every 30 minutes:
+
+**Setup Steps:**
+
+1. **Add DeepSeek API Key to GitHub Secrets**
+   - Go to: Repository → Settings → Secrets and variables → Actions
+   - Click: New repository secret
+   - Name: `DEEPSEEK_API_KEY`
+   - Value: Your DeepSeek API key
+   - Click: Add secret
+
+2. **Enable Workflows**
+   - Go to: Actions tab
+   - Enable workflows if disabled
+   - Workflows will run automatically every 30 minutes
+
+3. **Manual Trigger (Optional)**
+   - Go to: Actions → Price Prediction (DeepSeek) → Run workflow
+   - Specify custom pairs or use defaults (BTC, ETH)
+
+**Workflows Available:**
+- `price-prediction.yml` - Runs predictions every 30 minutes
+- `trading-bot.yml` - Full bot with Telegram notifications
+
+See [`.github/ACTIONS_SETUP.md`](.github/ACTIONS_SETUP.md) for detailed setup.
 
 ## Configuration
 

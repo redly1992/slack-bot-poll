@@ -2,15 +2,60 @@ name: Trading Bot Notification
 
 on:
   schedule:
-    # Run every 4 hours
-    - cron: '0 */4 * * *'
+    # Run price predictions every 30 minutes
+    - cron: '*/30 * * * *'
   
   # Allow manual trigger from GitHub UI
   workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job to run'
+        required: false
+        default: 'predict'
+        type: choice
+        options:
+          - predict
 
 jobs:
+  # Price Prediction Job - Uses DeepSeek AI
+  predict-price:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run price prediction (DeepSeek)
+        env:
+          AI_ENABLED: true
+          AI_PROVIDER: deepseek
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: deepseek-reasoner
+          EXCHANGE: bybit
+          INSTRUCTION_FILE: instructions/strategy.md
+        run: npm run predict
+
+      - name: Upload prediction logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prediction-logs
+          path: logs/
+          retention-days: 7
+
+  # Trading Bot Job - Optional, runs separately
   analyze:
     runs-on: ubuntu-latest
+    if: github.event.inputs.job == 'bot' || github.event.inputs.job == 'both'
     
     steps:
       - name: Checkout code
@@ -30,10 +75,10 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           AI_ENABLED: true
-          AI_PROVIDER: gemini
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-2.5-flash
-          EXCHANGE: bybit
+          AI_PROVIDER: deepseek
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: deepseek-chat
+          EXCHANGE: binance
           INSTRUCTION_FILE: instructions/default.md
           DRY_RUN: false
         run: npm start

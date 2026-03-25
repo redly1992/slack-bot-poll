@@ -20,13 +20,16 @@ class TradingBot {
     
     // Initialize AI analyzer (optional)
     const aiEnabled = process.env.AI_ENABLED === 'true';
-    const aiProvider = process.env.AI_PROVIDER || 'gemini'; // Default to Gemini
+    const aiProvider = process.env.AI_PROVIDER || 'deepseek'; // Default to DeepSeek
     
     // Get API key and model based on provider
     let aiApiKey, aiModel;
     if (aiProvider === 'openai') {
       aiApiKey = process.env.OPENAI_API_KEY;
       aiModel = process.env.OPENAI_MODEL || process.env.AI_MODEL || 'gpt-4o-mini';
+    } else if (aiProvider === 'deepseek') {
+      aiApiKey = process.env.DEEPSEEK_API_KEY;
+      aiModel = process.env.DEEPSEEK_MODEL || process.env.AI_MODEL || 'deepseek-chat';
     } else if (aiProvider === 'gemini') {
       aiApiKey = process.env.GEMINI_API_KEY;
       aiModel = process.env.GEMINI_MODEL || process.env.AI_MODEL || 'gemini-1.5-flash';

@@ -3,7 +3,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 class AIAnalyzer {
   constructor(config) {
-    this.provider = config.provider || 'openai'; // 'openai' or 'gemini'
+    this.provider = config.provider || 'openai'; // 'openai', 'gemini', or 'deepseek'
     this.model = config.model;
     
     if (this.provider === 'openai') {
@@ -14,6 +14,17 @@ class AIAnalyzer {
       this.model = this.model || 'gpt-4o-mini';
       console.log(`✅ AI Analyzer initialized (OpenAI ${this.model})`);
       
+    } else if (this.provider === 'deepseek') {
+      if (!config.apiKey) {
+        throw new Error('DeepSeek API key is required');
+      }
+      this.client = new OpenAI({ 
+        apiKey: config.apiKey,
+        baseURL: 'https://api.deepseek.com'
+      });
+      this.model = this.model || 'deepseek-chat';
+      console.log(`✅ AI Analyzer initialized (DeepSeek ${this.model})`);
+      
     } else if (this.provider === 'gemini') {
       if (!config.apiKey) {
         throw new Error('Gemini API key is required');
@@ -23,7 +34,7 @@ class AIAnalyzer {
       console.log(`✅ AI Analyzer initialized (Gemini ${this.model})`);
       
     } else {
-      throw new Error(`Unknown AI provider: ${this.provider}. Use 'openai' or 'gemini'`);
+      throw new Error(`Unknown AI provider: ${this.provider}. Use 'openai', 'deepseek', or 'gemini'`);
     }
   }
 
@@ -40,7 +51,7 @@ class AIAnalyzer {
       const prompt = this.buildAnalysisPrompt(symbol, indicators, ohlcv, strategyInstructions);
       
       let analysis;
-      if (this.provider === 'openai') {
+      if (this.provider === 'openai' || this.provider === 'deepseek') {
         analysis = await this.analyzeWithOpenAI(prompt);
       } else if (this.provider === 'gemini') {
         analysis = await this.analyzeWithGemini(prompt);
@@ -79,15 +90,24 @@ class AIAnalyzer {
       messages: [
         {
           role: 'system',
-          content: `You are an expert cryptocurrency trading analyst. Analyze market data and provide trading signals based on technical indicators and the user's strategy. Be concise and actionable.
+          content: `You are an expert cryptocurrency trader specializing in directional trading. You analyze 4H timeframe to determine market direction, then use lower timeframes to find optimal entry points.
+
+CRITICAL RULES:
+1. You MUST always provide either LONG or SHORT - never HOLD or neutral
+2. Use 4H timeframe as primary direction indicator
+3. Use entry timeframe (15m) to find precise entry points within that direction
+4. Consider entry quality: pullbacks in uptrends (LONG) or rallies in downtrends (SHORT)
+5. Provide specific stop loss reasoning based on market structure
 
 Your response must be valid JSON with this structure:
 {
-  "signal": "BUY" | "SELL" | "HOLD",
+  "signal": "LONG" | "SHORT",
   "confidence": number (0-100),
-  "reasoning": ["reason 1", "reason 2", "reason 3"],
-  "marketAnalysis": "brief market analysis",
-  "riskLevel": "LOW" | "MEDIUM" | "HIGH"
+  "entryReason": "why this is a good entry point",
+  "reasoning": ["direction reason", "entry timing", "setup quality"],
+  "marketAnalysis": "brief 4H direction + entry analysis",
+  "riskLevel": "LOW" | "MEDIUM" | "HIGH",
+  "stopLossReason": "where and why to place stop loss"
 }`
         },
         {
@@ -114,15 +134,24 @@ Your response must be valid JSON with this structure:
       }
     });
 
-    const systemPrompt = `You are an expert cryptocurrency trading analyst. Analyze market data and provide trading signals based on technical indicators and the user's strategy. Be concise and actionable.
+    const systemPrompt = `You are an expert cryptocurrency trader specializing in directional trading. You analyze 4H timeframe to determine market direction, then use lower timeframes to find optimal entry points.
+
+CRITICAL RULES:
+1. You MUST always provide either LONG or SHORT - never HOLD or neutral
+2. Use 4H timeframe as primary direction indicator
+3. Use entry timeframe (15m) to find precise entry points within that direction
+4. Consider entry quality: pullbacks in uptrends (LONG) or rallies in downtrends (SHORT)
+5. Provide specific stop loss reasoning based on market structure
 
 Your response must be valid JSON with this structure:
 {
-  "signal": "BUY" | "SELL" | "HOLD",
+  "signal": "LONG" | "SHORT",
   "confidence": number (0-100),
-  "reasoning": ["reason 1", "reason 2", "reason 3"],
-  "marketAnalysis": "brief market analysis",
-  "riskLevel": "LOW" | "MEDIUM" | "HIGH"
+  "entryReason": "why this is a good entry point",
+  "reasoning": ["direction reason", "entry timing", "setup quality"],
+  "marketAnalysis": "brief 4H direction + entry analysis",
+  "riskLevel": "LOW" | "MEDIUM" | "HIGH",
+  "stopLossReason": "where and why to place stop loss"
 }`;
 
     const fullPrompt = `${systemPrompt}\n\n${prompt}`;
@@ -163,16 +192,27 @@ Your response must be valid JSON with this structure:
       prompt += '---\n\n';
     }
 
-    // --- Higher timeframe trend context ---
+    // --- Higher timeframe trend context (4H is primary) ---
     if (config._trendContext) {
       const { daily, h4, overallTrend } = config._trendContext;
-      prompt += `=== HIGHER TIMEFRAME TREND (Big Picture) ===\n`;
-      prompt += `Daily (1D) Trend: ${daily.trend}`;
-      if (daily.ema21) prompt += ` | EMA21: ${daily.ema21.toFixed(2)} | EMA50: ${daily.ema50?.toFixed(2)}`;
-      prompt += `\n4H Trend: ${h4.trend}`;
+      prompt += `=== 4H TIMEFRAME ANALYSIS (PRIMARY DIRECTION) ===\n`;
+      prompt += `4H Trend: ${h4.trend}`;
       if (h4.ema21) prompt += ` | EMA21: ${h4.ema21.toFixed(2)} | EMA50: ${h4.ema50?.toFixed(2)}`;
-      prompt += `\nOverall Trend: ${overallTrend}\n`;
-      prompt += `Strategy Rule: Only enter LONG if overall trend is BULLISH. Only enter SHORT/SELL if BEARISH. HOLD if NEUTRAL or MIXED.\n\n`;
+      if (h4.price) prompt += ` | Price: ${h4.price.toFixed(2)}`;
+      prompt += `\n\n`;
+      
+      prompt += `Daily (1D) Confirmation: ${daily.trend}`;
+      if (daily.ema21) prompt += ` | EMA21: ${daily.ema21.toFixed(2)}`;
+      prompt += `\n\n`;
+      
+      prompt += `=== TRADING RULES (MANDATORY) ===\n`;
+      prompt += `1. PRIMARY DIRECTION: Use 4H trend as the main directional bias\n`;
+      prompt += `2. POSITION REQUIREMENT: You MUST choose either LONG or SHORT - NO HOLD/NEUTRAL allowed\n`;
+      prompt += `3. IF 4H is BULLISH → Signal MUST be LONG\n`;
+      prompt += `4. IF 4H is BEARISH → Signal MUST be SHORT\n`;
+      prompt += `5. IF 4H is NEUTRAL/MIXED → Use Daily trend or technical indicators to decide, but still MUST give LONG or SHORT\n`;
+      prompt += `6. ENTRY TIMING: Use the entry timeframe (15m) indicators to find the best entry point within the 4H direction\n`;
+      prompt += `7. NEVER give HOLD - always take a position\n\n`;
     }
 
     // --- Live market data ---
@@ -216,14 +256,19 @@ Your response must be valid JSON with this structure:
 
     // --- JSON response instruction ---
     prompt += `\n=== RESPONSE FORMAT ===\n`;
-    prompt += `Based on all the above (respecting the higher timeframe trend direction), respond ONLY with valid JSON:\n`;
+    prompt += `Based on 4H timeframe direction and entry timeframe indicators, respond ONLY with valid JSON:\n`;
     prompt += `{\n`;
-    prompt += `  "signal": "BUY" | "SELL" | "HOLD",\n`;
+    prompt += `  "signal": "LONG" | "SHORT",\n`;
     prompt += `  "confidence": <0-100>,\n`;
-    prompt += `  "reasoning": ["reason 1", "reason 2", "reason 3"],\n`;
-    prompt += `  "marketAnalysis": "<2-3 sentence summary>",\n`;
-    prompt += `  "riskLevel": "LOW" | "MEDIUM" | "HIGH"\n`;
-    prompt += `}`;
+    prompt += `  "entryReason": "Explain why THIS is a good entry point based on ${config.timeframe || '15m'} indicators",\n`;
+    prompt += `  "reasoning": ["reason 1 for direction", "reason 2 for entry timing", "reason 3 for setup"],\n`;
+    prompt += `  "marketAnalysis": "<2-3 sentence summary of 4H direction and entry quality>",\n`;
+    prompt += `  "riskLevel": "LOW" | "MEDIUM" | "HIGH",\n`;
+    prompt += `  "stopLossReason": "Explain where stop loss should be placed and why"\n`;
+    prompt += `}\n\n`;
+    prompt += `CRITICAL: You MUST return either LONG or SHORT. Never return HOLD, BUY, or SELL.\n`;
+    prompt += `- Use "LONG" for bullish positions\n`;
+    prompt += `- Use "SHORT" for bearish positions\n`;
 
     return prompt;
   }

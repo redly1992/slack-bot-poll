@@ -1,0 +1,49 @@
+name: Price Prediction (DeepSeek)
+
+on:
+  schedule:
+    - cron: '0 17,21,1,5,9,13 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      pairs:
+        description: 'Trading pairs (space-separated, e.g., BTC ETH SOL)'
+        required: false
+        default: 'BTC ETH'
+        type: string
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run price prediction with DeepSeek
+        env:
+          AI_ENABLED: true
+          AI_PROVIDER: deepseek
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: deepseek-reasoner
+          EXCHANGE: bybit
+          INSTRUCTION_FILE: instructions/strategy.md
+        run: npm run predict
+
+      - name: Upload prediction results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prediction-results-${{ github.run_number }}
+          path: logs/
+          retention-days: 3
