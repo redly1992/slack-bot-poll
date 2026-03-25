@@ -169,14 +169,33 @@ class ContinuousMonitor {
       
       for (const tf of this.timeframes) {
         try {
-          const indicatorConfig = { rsiPeriod: 14, emaPeriods: [9, 21, 50], macdConfig: [12, 26, 9], bbPeriod: 20, stochConfig: [14, 3, 3] };
-          indicators[tf] = IndicatorCalculator.calculateAll(ohlcvData[tf], indicatorConfig);
+          // Transform OHLCV array to object format
+          // CCXT returns: [timestamp, open, high, low, close, volume]
+          const formattedOHLCV = ohlcvData[tf].map(candle => ({
+            timestamp: candle[0],
+            open: candle[1],
+            high: candle[2],
+            low: candle[3],
+            close: candle[4],
+            volume: candle[5]
+          }));
+          
+          const indicatorConfig = {
+            rsi: { enabled: true, period: 14, overbought: 70, oversold: 30 },
+            ema: { enabled: true, fastPeriod: 9, slowPeriod: 21 },
+            macd: { enabled: true, fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
+            bollinger: { enabled: true, period: 20, stdDev: 2 },
+            stochastic: { enabled: true, kPeriod: 14, dPeriod: 3, smooth: 3 }
+          };
+          
+          indicators[tf] = IndicatorCalculator.calculateAll(formattedOHLCV, indicatorConfig);
           const signalResult = this.determineSignal(indicators[tf], tf);
           signals[tf] = signalResult.signal;
           indicators[tf].explanation = signalResult.explanation;
         } catch (error) {
           console.error(`  ⚠️  ${pair} ${tf}: Indicator calculation failed - ${error.message}`);
           signals[tf] = 'NEUTRAL';
+          if (!indicators[tf]) indicators[tf] = {};
           indicators[tf].explanation = { summary: 'Error calculating indicators' };
         }
       }
@@ -319,7 +338,11 @@ class ContinuousMonitor {
     let signal = 'NEUTRAL';
     if (buyScore >= 3) signal = 'BUY';
     else if (sellScore >= 3) signal = 'SELL';
-    
+
+    console.log(`Explanation`, explanation);
+    console.log(`Sell Score`, sellScore);
+    console.log(`Buy Score`, buyScore);
+
     return { signal, explanation };
   }
   
