@@ -1,7 +1,3 @@
-
-<!-- AUTO-UPDATED: 2026-03-26 -->
-<!-- Based on 68 signals: 43 wins / 25 losses -->
-
 # AI-Optimized Crypto Trading Strategy Guide
 
 ## 🎯 YOUR ROLE & MISSION

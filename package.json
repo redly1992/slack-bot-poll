@@ -10,6 +10,12 @@
     "predict": "node predict-price.js",
     "monitor": "node continuous-monitor.js",
     "check-config": "node check-config.js",
+    "download-data": "node download-historical-data.js",
+    "backtest": "node backtest.js",
+    "calculate-pnl": "node calculate-pnl.js",
+    "analyze-results": "node analyze-results.js",
+    "improve-cycle": "node improve-cycle.js",
+    "check-progress": "node check-backtest-progress.js",
     "setup-telegram": "node setup-telegram.js",
     "verify": "node verify-system.cjs",
     "list-models": "node list-gemini-models.js"
@@ -33,6 +39,7 @@
     "js-yaml": "^4.1.0",
     "node-telegram-bot-api": "^0.64.0",
     "openai": "^6.32.0",
+    "sqlite3": "^6.0.1",
     "technicalindicators": "^3.1.0"
   }
 }
