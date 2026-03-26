@@ -27,14 +27,16 @@ npm run calculate-pnl -- --help
 # 1. Improve strategy automatically
 npm run improve-cycle
 
-# 2. Clean database
+# 2. Clean database AND checkpoint (fresh start)
 rm backtest-results.db backtest-checkpoint.json
-id
-# 3. Test new strategy
+
+# 3. Test new strategy (fresh start)
 npm run backtest
 
 # 4. Repeat!
 ```
+
+**💡 Tip:** If backtest exits early, just run `npm run backtest` again (auto-resumes!)
 
 ---
 
@@ -72,14 +74,20 @@ BACKTEST_SYMBOL=ETH/USDT npm run download-data
 
 ---
 
-## 🧪 RUN BACKTEST (NEW! Symbol Selection)
+## 🧪 RUN BACKTEST (NEW! Symbol Selection + Auto-Resume)
 
 ```bash
-# Default BTC/USDT
+# Default BTC/USDT (auto-resumes from checkpoint if exists)
 npm run backtest
 
-# Test ETH/USDT
+# Start fresh (ignore checkpoint)
+npm run backtest -- --fresh
+
+# Test ETH/USDT (auto-resumes)
 npm run backtest -- --symbol=ETH/USDT
+
+# Test ETH fresh start
+npm run backtest -- --symbol=ETH/USDT --fresh
 
 # Test SOL/USDT
 npm run backtest -- --symbol=SOL/USDT
@@ -90,6 +98,11 @@ npm run backtest -- --symbol=ETH/USDT --position-size=500
 # Show help
 npm run backtest -- --help
 ```
+
+**💡 Tip:** Backtest automatically saves progress every 50 candles!
+- If it crashes or exits, just run again to resume
+- Use `--fresh` to start from beginning
+- Delete `backtest-checkpoint.json` to reset
 
 ---
 

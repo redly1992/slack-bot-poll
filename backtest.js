@@ -19,6 +19,7 @@ class BacktestEngine {
     this.positionSize = config.positionSize || 1000; // $1000 per trade
     this.holdHours = config.holdHours || 24; // Hold for 24 hours
     this.checkpointFile = config.checkpointFile || 'backtest-checkpoint.json';
+    this.fresh = config.fresh || false; // If true, ignore checkpoint and start fresh
     
     // Initialize AI
     const aiProvider = process.env.AI_PROVIDER || 'deepseek';
@@ -56,6 +57,12 @@ class BacktestEngine {
    * Load checkpoint if exists
    */
   loadCheckpoint() {
+    // If fresh start requested, ignore checkpoint
+    if (this.fresh) {
+      console.log('🆕 Fresh start: Ignoring checkpoint');
+      return { lastProcessedIndex: -1, lastTimestamp: 0 };
+    }
+    
     try {
       if (fs.existsSync(this.checkpointFile)) {
         const data = fs.readFileSync(this.checkpointFile, 'utf-8');
@@ -552,13 +559,24 @@ COMMAND-LINE ARGUMENTS:
   --db-path=<path>           Database file path (default: backtest-results.db)
   --position-size=<number>   Position size in USD (default: 1000)
   --hold-hours=<number>      Hours to hold position (default: 24)
+  --fresh                    Start fresh (ignore checkpoint, start from beginning)
+  --resume                   Resume from checkpoint (default behavior)
   --help, -h                 Show this help message
 
+CHECKPOINT BEHAVIOR:
+  By default, backtest resumes from the last checkpoint if it exists.
+  - Checkpoint saves every 50 candles to backtest-checkpoint.json
+  - Use --fresh to ignore checkpoint and start from the beginning
+  - Use --resume to explicitly resume (same as default)
+  - To start completely fresh: rm backtest-checkpoint.json && npm run backtest
+
 EXAMPLES:
-  npm run backtest
-  npm run backtest -- --symbol=ETH/USDT
+  npm run backtest                              # Resume from checkpoint
+  npm run backtest -- --fresh                   # Start fresh (ignore checkpoint)
+  npm run backtest -- --symbol=ETH/USDT         # Resume ETH backtest
+  npm run backtest -- --symbol=ETH/USDT --fresh # Fresh start with ETH
   npm run backtest -- --symbol=SOL/USDT --position-size=500
-  node backtest.js --symbol=BTC/USDT
+  node backtest.js --symbol=BTC/USDT --fresh
 
 REQUIREMENTS:
   - CSV files must exist in data directory
@@ -576,7 +594,11 @@ NOTE: Command-line arguments override environment variables
   }
   
   args.forEach(arg => {
-    if (arg.startsWith('--')) {
+    if (arg === '--fresh') {
+      config.fresh = true;
+    } else if (arg === '--resume') {
+      config.fresh = false;
+    } else if (arg.startsWith('--')) {
       const [key, value] = arg.slice(2).split('=');
       
       if (key === 'symbol') {
@@ -607,7 +629,8 @@ if (require.main === module) {
     dataDir: cliArgs.dataDir || process.env.BACKTEST_DATA_DIR || 'data',
     dbPath: cliArgs.dbPath || process.env.BACKTEST_DB_PATH || 'backtest-results.db',
     positionSize: cliArgs.positionSize || parseFloat(process.env.BACKTEST_POSITION_SIZE) || 1000,
-    holdHours: cliArgs.holdHours || parseInt(process.env.BACKTEST_HOLD_HOURS) || 24
+    holdHours: cliArgs.holdHours || parseInt(process.env.BACKTEST_HOLD_HOURS) || 24,
+    fresh: cliArgs.fresh !== undefined ? cliArgs.fresh : false
   };
   
   const engine = new BacktestEngine(config);

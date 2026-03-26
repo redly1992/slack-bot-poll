@@ -62,18 +62,55 @@ npm run backtest -- [options]
 | `--db-path=<file>` | Database file | backtest-results.db | `--db-path=eth-test.db` |
 | `--position-size=<n>` | Position size USD | 1000 | `--position-size=500` |
 | `--hold-hours=<n>` | Hold duration | 24 | `--hold-hours=48` |
+| **`--fresh`** | **Start fresh (ignore checkpoint)** | - | `--fresh` |
+| **`--resume`** | **Resume from checkpoint (default)** | - | `--resume` |
 | `--help`, `-h` | Show help | - | `--help` |
+
+### 🔄 Checkpoint System (Auto-Resume)
+
+**By default, backtest automatically resumes from where it left off!**
+
+- ✅ Checkpoint saves every 50 candles to `backtest-checkpoint.json`
+- ✅ If backtest crashes or exits, just run again to resume
+- ✅ No duplicate AI calls or database entries
+- ✅ Progress bar shows correct position
+
+**To start fresh (ignore checkpoint):**
+```bash
+# Option 1: Use --fresh flag
+npm run backtest -- --fresh
+
+# Option 2: Delete checkpoint file
+rm backtest-checkpoint.json && npm run backtest
+```
+
+**When to use --fresh:**
+- ✅ Testing different symbol: `npm run backtest -- --symbol=ETH/USDT --fresh`
+- ✅ Changed strategy parameters
+- ✅ Want to restart from beginning
+- ✅ Testing after code changes
+
+**When backtest auto-resumes:**
+- 🔄 Process was interrupted (Ctrl+C, crash, timeout)
+- 🔄 Running same symbol again without --fresh flag
+- 🔄 Checkpoint file exists
 
 ### Examples
 ```bash
-# Default (BTC/USDT)
+# Default (BTC/USDT) - resumes if checkpoint exists
 npm run backtest
 
-# Test ETH
+# Start fresh (ignore any existing checkpoint)
+npm run backtest -- --fresh
+
+# Test ETH (auto-resumes if ETH checkpoint exists)
 npm run backtest -- --symbol=ETH/USDT
 
-# Test SOL with $500 positions
-npm run backtest -- --symbol=SOL/USDT --position-size=500
+# Test ETH fresh start
+npm run backtest -- --symbol=ETH/USDT --fresh
+
+# Test SOL with $500 positions, fresh start
+npm run backtest -- --symbol=SOL/USDT --position-size=500 --fresh
 
 # Test with 48-hour hold period
 npm run backtest -- --hold-hours=48
@@ -86,6 +123,7 @@ npm run backtest -- --help
 - ✅ Progress bar with checkpoint resume
 - ✅ SQLite database with signals
 - ✅ Stats: candles, alignments, signals, AI calls
+- ✅ Checkpoint file for auto-resume
 
 ---
 
