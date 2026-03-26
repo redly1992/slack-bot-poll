@@ -377,6 +377,19 @@ class BacktestEngine {
   }
   
   /**
+   * Update progress bar - simple line-by-line, no \r tricks
+   */
+  updateProgressBar(currentIndex, totalCandles) {
+    const progress = ((currentIndex / totalCandles) * 100).toFixed(1);
+    const barWidth = 35;
+    const filled = Math.floor((currentIndex / totalCandles) * barWidth);
+    const bar = '█'.repeat(filled) + '░'.repeat(barWidth - filled);
+    const line = `  [${bar}] ${progress}% | Candles: ${this.stats.candlesProcessed} | Alignments: ${this.stats.alignmentsDetected} | Signals: ${this.stats.signalsRecorded} | AI Calls: ${this.stats.aiCalls}`;
+    // Overwrite current line cleanly
+    process.stdout.write('\r' + line + ' '.repeat(Math.max(0, 120 - line.length)));
+  }
+  
+  /**
    * Run backtest
    */
   async run() {
@@ -392,22 +405,47 @@ class BacktestEngine {
     // Initialize database
     await this.initDatabase();
     
-    console.log('\n⏱️  Processing candles...\n');
+    console.log('\n⏱️  Processing candles...');
     
     // Determine start index (resume from checkpoint or start fresh)
     const startIndex = Math.max(100, this.checkpoint.lastProcessedIndex + 1);
-    const totalCandles = data15m.length - startIndex;
+    const totalCandles = data15m.length;
     
     if (startIndex > 100) {
-      console.log(`📌 Resuming from index ${startIndex} (skipping ${startIndex - 100} already processed)\n`);
+      console.log(`📌 Resuming from candle ${startIndex} of ${totalCandles} (${((startIndex / totalCandles) * 100).toFixed(1)}% done)`);
     }
+    
+    // Initialize stats based on start index
+    this.stats.candlesProcessed = startIndex - 100;
+    this.currentIndex = startIndex;
+    this.currentTimestamp = 0;
+    
+    // Save checkpoint on Ctrl+C (SIGINT)
+    const sigintHandler = () => {
+      process.stdout.write('\n');
+      console.log(`\n⚠️  Interrupted! Saving checkpoint at index ${this.currentIndex}...`);
+      this.saveCheckpoint(this.currentIndex, this.currentTimestamp);
+      console.log('✅ Checkpoint saved. Run "npm run backtest" to resume.\n');
+      process.exit(0);
+    };
+    process.once('SIGINT', sigintHandler);
+    
+    // Initial progress bar
+    this.updateProgressBar(startIndex, totalCandles);
     
     // Process each 15m candle (our primary timeframe)
     for (let i = startIndex; i < data15m.length; i++) {
+      this.currentIndex = i;
       const currentCandle = data15m[i];
       const timestamp = currentCandle.timestamp;
+      this.currentTimestamp = timestamp;
       
       this.stats.candlesProcessed++;
+      
+      // Update progress bar every 5 candles
+      if (i % 5 === 0 || i === data15m.length - 1) {
+        this.updateProgressBar(i, totalCandles);
+      }
       
       // Get corresponding candles from all timeframes
       const candles5m = this.getCandlesUpTo(data5m, timestamp, 100);
@@ -436,9 +474,9 @@ class BacktestEngine {
         this.stats.alignmentsDetected++;
         const alignment = allBuy ? 'BUY' : 'SELL';
         
-        // Progress indicator
-        const progress = ((i / data15m.length) * 100).toFixed(1);
-        console.log(`[${progress}%] ${currentCandle.date} - ${alignment} alignment detected at $${currentCandle.close.toFixed(2)}`);
+        // Print AI call on its own line (move past progress bar first)
+        process.stdout.write('\n');
+        process.stdout.write(`  🤖 AI call #${this.stats.aiCalls + 1}: ${alignment} at $${currentCandle.close.toFixed(2)} (${currentCandle.date})...\n`);
         
         // Get AI prediction
         const aiAnalysis = await this.getAIPrediction(ind15m, ind4h, candles15m);
@@ -468,38 +506,33 @@ class BacktestEngine {
             market_condition: ind4h.ema?.fast > ind4h.ema?.slow ? 'BULLISH' : 'BEARISH'
           });
           
-          console.log(`  ✅ AI: ${aiAnalysis.signal} (${aiAnalysis.confidence}%) - Recorded`);
-        } else {
-          console.log(`  ⏭️  AI returned ${aiAnalysis?.signal || 'no signal'} - Skipped`);
+          // Stats updated in recordSignal callback
         }
         
         // Limit API calls for cost
         await this.sleep(1000);
       }
       
-      // Save checkpoint every 50 candles and update progress bar
-      if (i % 50 === 0) {
+      // Save checkpoint every 10 candles
+      if (i % 10 === 0) {
         this.saveCheckpoint(i, timestamp);
-        const processed = i - startIndex;
-        const progress = ((processed / totalCandles) * 100).toFixed(1);
-        const barWidth = 40;
-        const filled = Math.floor((processed / totalCandles) * barWidth);
-        const bar = '█'.repeat(filled) + '░'.repeat(barWidth - filled);
-        
-        process.stdout.write(`\r  [${bar}] ${progress}% | Candles: ${this.stats.candlesProcessed} | Alignments: ${this.stats.alignmentsDetected} | Signals: ${this.stats.signalsRecorded} | AI Calls: ${this.stats.aiCalls}`);
       }
     }
     
-    // Clear progress bar
-    console.log('');
+    // Remove SIGINT handler since we completed normally
+    process.removeListener('SIGINT', sigintHandler);
     
-    console.log('\n\n✅ Backtest complete!\n');
+    // Final progress bar then newline
+    this.updateProgressBar(data15m.length, totalCandles);
+    process.stdout.write('\n');
+    
+    console.log('\n✅ Backtest complete!\n');
     this.printStats();
     
     // Clean up checkpoint file on successful completion
     if (fs.existsSync(this.checkpointFile)) {
       fs.unlinkSync(this.checkpointFile);
-      console.log('📌 Checkpoint file cleaned up');
+      console.log('📌 Checkpoint cleaned up (run complete)');
     }
     
     await this.close();
