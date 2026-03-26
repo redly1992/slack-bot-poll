@@ -15,6 +15,7 @@
     "calculate-pnl": "node calculate-pnl.js",
     "analyze-results": "node analyze-results.js",
     "improve-cycle": "node improve-cycle.js",
+    "cleanup": "node cleanup.js",
     "check-progress": "node check-backtest-progress.js",
     "setup-telegram": "node setup-telegram.js",
     "verify": "node verify-system.cjs",
