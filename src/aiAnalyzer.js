@@ -63,6 +63,10 @@ class AIAnalyzer {
         reasoning: analysis.reasoning || [],
         marketAnalysis: analysis.marketAnalysis || '',
         riskLevel: analysis.riskLevel || 'MEDIUM',
+        stopLoss: analysis.stopLoss || null,
+        takeProfit: analysis.takeProfit || null,
+        stopLossReason: analysis.stopLossReason || '',
+        entryReason: analysis.entryReason || '',
         model: this.model,
         provider: this.provider,
         timestamp: new Date().toISOString()
@@ -107,6 +111,8 @@ Your response must be valid JSON with this structure:
   "reasoning": ["direction reason", "entry timing", "setup quality"],
   "marketAnalysis": "brief 4H direction + entry analysis",
   "riskLevel": "LOW" | "MEDIUM" | "HIGH",
+  "stopLoss": number (exact price level for stop loss),
+  "takeProfit": number (exact price level for take profit),
   "stopLossReason": "where and why to place stop loss"
 }`
         },
@@ -151,6 +157,8 @@ Your response must be valid JSON with this structure:
   "reasoning": ["direction reason", "entry timing", "setup quality"],
   "marketAnalysis": "brief 4H direction + entry analysis",
   "riskLevel": "LOW" | "MEDIUM" | "HIGH",
+  "stopLoss": number (exact price level for stop loss),
+  "takeProfit": number (exact price level for take profit),
   "stopLossReason": "where and why to place stop loss"
 }`;
 
@@ -264,8 +272,15 @@ Your response must be valid JSON with this structure:
     prompt += `  "reasoning": ["reason 1 for direction", "reason 2 for entry timing", "reason 3 for setup"],\n`;
     prompt += `  "marketAnalysis": "<2-3 sentence summary of 4H direction and entry quality>",\n`;
     prompt += `  "riskLevel": "LOW" | "MEDIUM" | "HIGH",\n`;
+    prompt += `  "stopLoss": <exact numeric price for stop loss, e.g. 91500.00>,\n`;
+    prompt += `  "takeProfit": <exact numeric price for take profit, e.g. 96000.00>,\n`;
     prompt += `  "stopLossReason": "Explain where stop loss should be placed and why"\n`;
     prompt += `}\n\n`;
+    prompt += `STOP LOSS / TAKE PROFIT RULES:\n`;
+    prompt += `- LONG: stopLoss must be BELOW current price (recent swing low or below key support)\n`;
+    prompt += `- LONG: takeProfit must be ABOVE current price (near resistance, minimum 1:2 R:R ratio)\n`;
+    prompt += `- SHORT: stopLoss must be ABOVE current price (recent swing high or above key resistance)\n`;
+    prompt += `- SHORT: takeProfit must be BELOW current price (near support, minimum 1:2 R:R ratio)\n`;
     prompt += `CRITICAL: You MUST return either LONG or SHORT. Never return HOLD, BUY, or SELL.\n`;
     prompt += `- Use "LONG" for bullish positions\n`;
     prompt += `- Use "SHORT" for bearish positions\n`;

@@ -35,7 +35,7 @@ class PnLCalculator {
   }
   
   /**
-   * Load CSV data for price lookups
+   * Load CSV data for price lookups (includes high/low for SL/TP scanning)
    */
   loadPriceData() {
     const filename = path.join(this.dataDir, `${this.symbol.replace('/', '-').toLowerCase()}-15m.csv`);
@@ -47,18 +47,26 @@ class PnLCalculator {
     const content = fs.readFileSync(filename, 'utf-8');
     const lines = content.split('\n').filter(line => line.trim());
     
-    // Parse CSV into map for fast lookup by timestamp
+    // Parse CSV into sorted array for forward scanning and map for fast lookup
+    const candles = [];
     const priceMap = new Map();
     
     lines.slice(1).forEach(line => {
       const parts = line.split(',');
       const timestamp = parseInt(parts[0]);
+      const open = parseFloat(parts[2]);
+      const high = parseFloat(parts[3]);
+      const low = parseFloat(parts[4]);
       const close = parseFloat(parts[5]);
-      priceMap.set(timestamp, close);
+      candles.push({ timestamp, open, high, low, close });
+      priceMap.set(timestamp, { open, high, low, close });
     });
     
-    console.log(`📁 Loaded ${priceMap.size} price points from 15m data`);
-    return priceMap;
+    // Sort by timestamp ascending
+    candles.sort((a, b) => a.timestamp - b.timestamp);
+    
+    console.log(`📁 Loaded ${candles.length} price points from 15m data`);
+    return { candles, priceMap };
   }
   
   /**
@@ -78,37 +86,84 @@ class PnLCalculator {
   }
   
   /**
-   * Find exit price N hours after entry
+   * Find exit: scan candles forward from entry, check SL/TP hit or time exit.
+   * For LONG: SL hit if candle.low <= stopLoss, TP hit if candle.high >= takeProfit
+   * For SHORT: SL hit if candle.high >= stopLoss, TP hit if candle.low <= takeProfit
+   * If both SL and TP triggered on same candle, SL wins (conservative).
+   * Falls back to time-based exit if no SL/TP set.
+   */
+  findExit(signal, candles) {
+    const entryTimestamp = signal.timestamp;
+    const direction = signal.direction;
+    const stopLoss = signal.stop_loss_price;
+    const takeProfit = signal.take_profit_price;
+    const maxExitTimestamp = entryTimestamp + (this.holdHours * 60 * 60 * 1000);
+
+    // Find starting candle index (first candle after entry)
+    const startIdx = candles.findIndex(c => c.timestamp > entryTimestamp);
+    if (startIdx === -1) return null;
+
+    for (let i = startIdx; i < candles.length; i++) {
+      const candle = candles[i];
+
+      // Stop scanning at max hold time
+      if (candle.timestamp > maxExitTimestamp) {
+        // Time-based exit: use close of the last scanned candle or closest candle
+        const timeCandle = candles[i - 1] || candles[startIdx];
+        return {
+          exitTimestamp: timeCandle.timestamp,
+          exitPrice: timeCandle.close,
+          exitType: 'TIME'
+        };
+      }
+
+      if (stopLoss && takeProfit) {
+        if (direction === 'LONG') {
+          const slHit = candle.low <= stopLoss;
+          const tpHit = candle.high >= takeProfit;
+          if (slHit) return { exitTimestamp: candle.timestamp, exitPrice: stopLoss, exitType: 'SL' };
+          if (tpHit) return { exitTimestamp: candle.timestamp, exitPrice: takeProfit, exitType: 'TP' };
+        } else if (direction === 'SHORT') {
+          const slHit = candle.high >= stopLoss;
+          const tpHit = candle.low <= takeProfit;
+          if (slHit) return { exitTimestamp: candle.timestamp, exitPrice: stopLoss, exitType: 'SL' };
+          if (tpHit) return { exitTimestamp: candle.timestamp, exitPrice: takeProfit, exitType: 'TP' };
+        }
+      }
+    }
+
+    // Ran out of data
+    if (candles.length > startIdx) {
+      const last = candles[candles.length - 1];
+      return { exitTimestamp: last.timestamp, exitPrice: last.close, exitType: 'TIME' };
+    }
+    return null;
+  }
+
+  /**
+   * Legacy: Find exit price N hours after entry (no SL/TP)
    */
   findExitPrice(entryTimestamp, priceMap) {
     const exitTimestamp = entryTimestamp + (this.holdHours * 60 * 60 * 1000);
     
-    // Try exact match first
     if (priceMap.has(exitTimestamp)) {
-      return { timestamp: exitTimestamp, price: priceMap.get(exitTimestamp) };
+      return { timestamp: exitTimestamp, price: priceMap.get(exitTimestamp).close };
     }
     
-    // Find closest candle within 30 minutes
-    const tolerance = 30 * 60 * 1000; // 30 minutes
+    const tolerance = 30 * 60 * 1000;
     for (let offset = 0; offset <= tolerance; offset += 15 * 60 * 1000) {
       const ts1 = exitTimestamp + offset;
       const ts2 = exitTimestamp - offset;
-      
-      if (priceMap.has(ts1)) {
-        return { timestamp: ts1, price: priceMap.get(ts1) };
-      }
-      if (priceMap.has(ts2)) {
-        return { timestamp: ts2, price: priceMap.get(ts2) };
-      }
+      if (priceMap.has(ts1)) return { timestamp: ts1, price: priceMap.get(ts1).close };
+      if (priceMap.has(ts2)) return { timestamp: ts2, price: priceMap.get(ts2).close };
     }
-    
-    return null; // Not enough future data
+    return null;
   }
   
   /**
    * Calculate P/L for a signal
    */
-  calculatePnL(signal, exitPrice) {
+  calculatePnL(signal, exitPrice, exitType = 'TIME') {
     const entryPrice = signal.entry_price;
     const direction = signal.direction; // LONG or SHORT
     
@@ -118,7 +173,7 @@ class PnLCalculator {
     } else if (direction === 'SHORT') {
       pnlPercent = ((entryPrice - exitPrice) / entryPrice) * 100;
     } else {
-      return { pnlPercent: 0, pnlUsd: 0, result: 'UNKNOWN' };
+      return { pnlPercent: 0, pnlUsd: 0, result: 'UNKNOWN', exitType };
     }
     
     const pnlUsd = (this.positionSize * pnlPercent) / 100;
@@ -127,7 +182,8 @@ class PnLCalculator {
     return {
       pnlPercent: parseFloat(pnlPercent.toFixed(2)),
       pnlUsd: parseFloat(pnlUsd.toFixed(2)),
-      result
+      result,
+      exitType
     };
   }
   
@@ -143,7 +199,8 @@ class PnLCalculator {
             pnl_percent = ?,
             pnl_usd = ?,
             result = ?,
-            was_correct = ?
+            was_correct = ?,
+            exit_type = ?
         WHERE id = ?
       `, [
         exitData.exitTimestamp,
@@ -152,6 +209,7 @@ class PnLCalculator {
         exitData.pnlUsd,
         exitData.result,
         exitData.wasCorrect,
+        exitData.exitType,
         signalId
       ], (err) => {
         if (err) reject(err);
@@ -168,7 +226,13 @@ class PnLCalculator {
     console.log(`${'='.repeat(60)}\n`);
     
     await this.initDatabase();
-    const priceMap = this.loadPriceData();
+
+    // Add exit_type column if it doesn't exist (migration for existing DBs)
+    await new Promise((resolve) => {
+      this.db.run(`ALTER TABLE backtest_signals ADD COLUMN exit_type TEXT`, () => resolve());
+    });
+
+    const { candles, priceMap } = this.loadPriceData();
     const signals = await this.getSignalsNeedingPnL();
     
     console.log(`\n📊 Found ${signals.length} signals needing P/L calculation\n`);
@@ -181,9 +245,24 @@ class PnLCalculator {
     
     let calculated = 0;
     let skipped = 0;
+    let slHits = 0, tpHits = 0, timeExits = 0;
     
     for (const signal of signals) {
-      const exitInfo = this.findExitPrice(signal.timestamp, priceMap);
+      let exitInfo;
+
+      if (signal.stop_loss_price && signal.take_profit_price) {
+        // Use SL/TP-aware scanning
+        exitInfo = this.findExit(signal, candles);
+        if (exitInfo) {
+          exitInfo = { timestamp: exitInfo.exitTimestamp, price: exitInfo.exitPrice, exitType: exitInfo.exitType };
+        }
+      } else {
+        // Fallback: time-based exit (no SL/TP stored)
+        const legacyExit = this.findExitPrice(signal.timestamp, priceMap);
+        if (legacyExit) {
+          exitInfo = { timestamp: legacyExit.timestamp, price: legacyExit.price, exitType: 'TIME' };
+        }
+      }
       
       if (!exitInfo) {
         skipped++;
@@ -191,11 +270,12 @@ class PnLCalculator {
         continue;
       }
       
-      const pnl = this.calculatePnL(signal, exitInfo.price);
-      
-      // Determine if AI was correct
-      const aiDirection = signal.direction;
+      const pnl = this.calculatePnL(signal, exitInfo.price, exitInfo.exitType);
       const wasCorrect = pnl.result === 'WIN' ? 1 : 0;
+
+      if (pnl.exitType === 'SL') slHits++;
+      else if (pnl.exitType === 'TP') tpHits++;
+      else timeExits++;
       
       await this.updateSignalPnL(signal.id, {
         exitTimestamp: exitInfo.timestamp,
@@ -203,19 +283,24 @@ class PnLCalculator {
         pnlPercent: pnl.pnlPercent,
         pnlUsd: pnl.pnlUsd,
         result: pnl.result,
-        wasCorrect
+        wasCorrect,
+        exitType: pnl.exitType
       });
       
       calculated++;
       
       const resultEmoji = pnl.result === 'WIN' ? '✅' : pnl.result === 'LOSS' ? '❌' : '⚖️';
+      const exitEmoji = pnl.exitType === 'SL' ? '🛑' : pnl.exitType === 'TP' ? '🎯' : '⏰';
       const signalDate = new Date(signal.timestamp).toISOString().split('T')[0];
       
-      console.log(`${resultEmoji} #${signal.id} | ${signalDate} | ${aiDirection} @ $${signal.entry_price.toFixed(2)} → $${exitInfo.price.toFixed(2)} | ${pnl.pnlPercent > 0 ? '+' : ''}${pnl.pnlPercent}% ($${pnl.pnlUsd > 0 ? '+' : ''}${pnl.pnlUsd.toFixed(2)})`);
+      console.log(`${resultEmoji} ${exitEmoji} #${signal.id} | ${signalDate} | ${signal.direction} @ $${signal.entry_price.toFixed(2)} → $${exitInfo.price.toFixed(2)} | ${pnl.pnlPercent > 0 ? '+' : ''}${pnl.pnlPercent}% ($${pnl.pnlUsd > 0 ? '+' : ''}${pnl.pnlUsd.toFixed(2)}) [${pnl.exitType}]`);
     }
     
     console.log(`\n${'='.repeat(60)}`);
     console.log(`✅ Calculated: ${calculated}`);
+    if (slHits > 0 || tpHits > 0 || timeExits > 0) {
+      console.log(`   🛑 Stop Loss hits: ${slHits} | 🎯 Take Profit hits: ${tpHits} | ⏰ Time exits: ${timeExits}`);
+    }
     console.log(`⏭️  Skipped: ${skipped} (insufficient future data)`);
     
     await this.printSummary();
@@ -258,9 +343,22 @@ class PnLCalculator {
           console.log(`Avg Confidence:    ${row.avg_confidence.toFixed(1)}%`);
           console.log(`Avg P/L:           ${row.avg_pnl_percent > 0 ? '+' : ''}${row.avg_pnl_percent.toFixed(2)}%`);
           console.log(`Total P/L:         $${row.total_pnl_usd > 0 ? '+' : ''}${row.total_pnl_usd.toFixed(2)}`);
-          
-          // Get best and worst trades
-          this.db.all(`
+
+          // Exit type breakdown
+          this.db.get(`
+            SELECT
+              SUM(CASE WHEN exit_type = 'SL' THEN 1 ELSE 0 END) as sl_count,
+              SUM(CASE WHEN exit_type = 'TP' THEN 1 ELSE 0 END) as tp_count,
+              SUM(CASE WHEN exit_type = 'TIME' OR exit_type IS NULL THEN 1 ELSE 0 END) as time_count
+            FROM backtest_signals WHERE result IS NOT NULL
+          `, (err, exits) => {
+            if (!err && exits) {
+              console.log(`\n📊 Exit Breakdown:`);
+              console.log(`   🛑 Stop Loss:   ${exits.sl_count || 0}`);
+              console.log(`   🎯 Take Profit: ${exits.tp_count || 0}`);
+              console.log(`   ⏰ Time Exit:   ${exits.time_count || 0}`);
+            }
+            this.db.all(`
             SELECT date, direction, entry_price, exit_price, pnl_percent, pnl_usd, ai_confidence
             FROM backtest_signals
             WHERE result IS NOT NULL
@@ -291,6 +389,7 @@ class PnLCalculator {
               resolve();
             });
           });
+          }); // close exit breakdown query
         } else {
           console.log('\n⚠️  No completed signals to summarize\n');
           resolve();

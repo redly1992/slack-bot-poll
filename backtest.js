@@ -135,6 +135,8 @@ class BacktestEngine {
           ai_entry_reason TEXT,
           ai_stop_loss_reason TEXT,
           ai_risk_level TEXT,
+          stop_loss_price REAL,
+          take_profit_price REAL,
           
           entry_price REAL,
           direction TEXT,
@@ -338,8 +340,9 @@ class BacktestEngine {
           indicators_5m, indicators_15m, indicators_1h, indicators_4h,
           signal_5m, signal_15m, signal_1h, alignment,
           ai_signal, ai_confidence, ai_reasoning, ai_entry_reason, ai_stop_loss_reason, ai_risk_level,
+          stop_loss_price, take_profit_price,
           entry_price, direction, market_condition
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       stmt.run(
@@ -360,6 +363,8 @@ class BacktestEngine {
         signalData.ai_entry_reason,
         signalData.ai_stop_loss_reason,
         signalData.ai_risk_level,
+        signalData.stop_loss_price,
+        signalData.take_profit_price,
         signalData.entry_price,
         signalData.direction,
         signalData.market_condition,
@@ -501,6 +506,8 @@ class BacktestEngine {
             ai_entry_reason: aiAnalysis.entryReason || '',
             ai_stop_loss_reason: aiAnalysis.stopLossReason || '',
             ai_risk_level: aiAnalysis.riskLevel || 'MEDIUM',
+            stop_loss_price: aiAnalysis.stopLoss || null,
+            take_profit_price: aiAnalysis.takeProfit || null,
             entry_price: currentCandle.close,
             direction: aiAnalysis.signal,
             market_condition: ind4h.ema?.fast > ind4h.ema?.slow ? 'BULLISH' : 'BEARISH'
