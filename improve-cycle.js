@@ -14,9 +14,19 @@ const ResultsAnalyzer = require('./analyze-results.js');
 class AutoImprover {
   constructor() {
     this.strategyPath = path.join('instructions', 'strategy.md');
-    this.backupPath = path.join('instructions', `strategy-backup-${Date.now()}.md`);
+    this.backupPath = null; // set later with cycle number + win-rate in filename
     this.resultsDbPath = 'backtest-results.db';
     this.checkpointPath = 'backtest-checkpoint.json';
+
+    // Read cycle number from auto-cycle state file (if running under auto-cycle daemon)
+    this.cycleNumber = 1;
+    try {
+      const stateFile = 'cycle-state.json';
+      if (fs.existsSync(stateFile)) {
+        const state = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+        this.cycleNumber = state.cycleNumber || 1;
+      }
+    } catch (_) {}
     
     // Initialize AI client
     const provider = process.env.AI_PROVIDER || 'deepseek';
@@ -417,8 +427,13 @@ Make the strategy smarter and more precise based on actual trade data.`;
       console.log(`  ⚠️  AI analysis failed: ${error.message}\n  Falling back to statistical update only.\n`);
     }
 
-    // Step 4: Backup current strategy
+    // Step 4: Backup current strategy (filename: [date][cycle-N][pct-XX.X])
     console.log('💾 Step 4/5: Backing up current strategy...\n');
+    const dateStr = new Date().toISOString().split('T')[0];
+    this.backupPath = path.join(
+      'instructions',
+      `strategy-backup[${dateStr}][cycle-${this.cycleNumber}][pct-${winRate}].md`
+    );
     this.backupStrategy();
     
     // Step 5: Update strategy (AI-generated or statistical)

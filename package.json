@@ -16,6 +16,8 @@
     "analyze-results": "node analyze-results.js",
     "improve-cycle": "node improve-cycle.js",
     "cleanup": "node cleanup.js",
+    "auto-cycle": "node auto-cycle.js",
+    "stop": "node stop-cycle.js",
     "check-progress": "node check-backtest-progress.js",
     "setup-telegram": "node setup-telegram.js",
     "verify": "node verify-system.cjs",
