@@ -16,7 +16,7 @@
     "analyze-results": "node analyze-results.js",
     "improve-cycle": "node improve-cycle.js",
     "cleanup": "node cleanup.js",
-    "auto-cycle": "node auto-cycle.js",
+    "auto-cycle": "nohup node auto-cycle.js >> auto-cycle.log 2>&1 & echo '🚀 Auto-cycle started in background. Logs: auto-cycle.log | Monitor: npm run check-progress | Stop: npm run stop'",
     "stop": "node stop-cycle.js",
     "check-progress": "node check-backtest-progress.js",
     "setup-telegram": "node setup-telegram.js",
