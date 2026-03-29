@@ -1,11 +1,11 @@
 <!-- AI-IMPROVED: 2026-03-29 -->
-<!-- Based on 243 signals: 78 wins / 165 losses (32.1% win rate) -->
+<!-- Based on 243 signals: 79 wins / 164 losses (32.5% win rate) -->
 
 <!-- AI-IMPROVED: 2026-03-29 -->
-<!-- Based on 243 trades: 78 wins / 165 losses (32.1% win rate) -->
+<!-- Based on 243 trades: 79 wins / 164 losses (32.5% win rate) -->
 <!-- DATA-DRIVEN UPDATE: 2026-03-29 - Detailed analysis of 30 sample trades (15 wins, 15 losses) -->
-<!-- KEY INSIGHT: Strategy is unprofitable (-$86.15) with low win rate (32.1%), needs aggressive filtering -->
-<!-- CRITICAL FINDING: "5m:BUY 15m:BUY 1h:BUY" appears in 100% of sample trades (30/30) - completely useless as filter -->
+<!-- KEY INSIGHT: Strategy is unprofitable (-$6.24) with low win rate (32.5%), needs aggressive filtering -->
+<!-- CRITICAL FINDING: "5m:BUY 15m:BUY 1h:BUY" appears in 93% of sample trades (28/30) - completely useless as filter -->
 <!-- CRITICAL FINDING: Trading against 4H market condition is a major source of losses -->
 <!-- NEW FINDING: 15m MACD_hist extremes (>100 or <-50) often lead to immediate reversals -->
 <!-- NEW FINDING: 4h MACD_hist > 200 in BULLISH markets leads to LONG losses (exhaustion) -->
@@ -32,8 +32,8 @@ You are a Professional Cryptocurrency Trading Analyst with expert-level knowledg
 ## 📊 DATA-DRIVEN RULES FROM BACKTEST ANALYSIS
 
 ### Key Findings from 243 Trades:
-1. **Win Rate**: 32.1% (78 wins, 165 losses) - UNPROFITABLE SYSTEM
-2. **Total P&L**: -$86.15 - LOSING STRATEGY, NEEDS AGGRESSIVE FILTERING
+1. **Win Rate**: 32.5% (79 wins, 164 losses) - UNPROFITABLE SYSTEM
+2. **Total P&L**: -$6.24 - LOSING STRATEGY, NEEDS AGGRESSIVE FILTERING
 3. **Critical Problem**: Too many low-quality trades, especially against market structure
 4. **Performance Patterns Identified**:
    - **Winning Pattern**: LONG in BULLISH markets with 15m EMA bullish alignment (fast > slow) - 60% of winning trades
@@ -42,7 +42,7 @@ You are a Professional Cryptocurrency Trading Analyst with expert-level knowledg
    - **Losing Pattern**: SHORT in BULLISH markets with 15m EMA bullish alignment (contradiction) - 40% of losing trades
    - **Losing Pattern**: LONG when 4h MACD_hist > 200 (exhaustion) - 27% of losing trades
    - **Losing Pattern**: Trading against 4H market condition - 33% of losing trades
-   - **Timeframe Signals**: "5m:BUY 15m:BUY 1h:BUY" appears in 100% of sample trades - COMPLETELY USELESS as filter
+   - **Timeframe Signals**: "5m:BUY 15m:BUY 1h:BUY" appears in 93% of sample trades - COMPLETELY USELESS as filter
    - **Confidence levels**: 65-75 in both wins and losses - MINIMAL PREDICTIVE POWER
    - **RSI values**: No clear pattern in wins vs losses - not a reliable filter
 

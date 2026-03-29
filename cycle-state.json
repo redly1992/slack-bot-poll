@@ -1,0 +1,17 @@
+{
+  "pid": 131510,
+  "status": "stopped",
+  "overallStartedAt": "2026-03-27T16:49:28.089Z",
+  "cycleNumber": 62,
+  "totalCyclesCompleted": 61,
+  "totalSteps": 3,
+  "symbol": "BTC/USDT",
+  "cycleStartedAt": "2026-03-29T15:10:50.743Z",
+  "currentStep": "backtest",
+  "currentStepLabel": "Running backtest",
+  "stepNumber": 2,
+  "stepStartedAt": "2026-03-29T15:10:50.779Z",
+  "lastCycleCompletedAt": "2026-03-29T15:10:47.740Z",
+  "avgCycleDurationMs": 2891432,
+  "stoppedAt": "2026-03-29T15:32:11.451Z"
+}
