@@ -28,7 +28,7 @@ class ContinuousMonitor {
       enableRateLimit: true,
     });
     
-    this.parser = new InstructionParser('instructions/strategy.md');
+    this.parser = new InstructionParser('instructions/learned-strategy.md');
     
     // Initialize AI analyzer
     const aiProvider = process.env.AI_PROVIDER || 'deepseek';

@@ -297,30 +297,52 @@ class BacktestEngine {
   }
   
   /**
+   * Load strategy instructions (learned-strategy.md → strategy-english.md)
+   */
+  loadStrategy() {
+    const candidates = [
+      path.join('instructions', 'learned-strategy.md'),
+      path.join('instructions', 'strategy-english.md'),
+    ];
+    for (const file of candidates) {
+      if (fs.existsSync(file)) {
+        console.log(`📖 Strategy loaded: ${file}`);
+        return fs.readFileSync(file, 'utf-8');
+      }
+    }
+    console.warn('⚠️  No strategy file found — AI will trade without instructions!');
+    return '';
+  }
+
+  /**
    * Get AI prediction
    */
   async getAIPrediction(indicators15m, indicators4h, candles15m) {
     try {
-      // Build trend context similar to continuous-monitor.js
       const trendContext = {
         h4: {
           trend: indicators4h.ema?.fast > indicators4h.ema?.slow ? 'BULLISH' : 'BEARISH',
           rsi: indicators4h.rsi,
+          ema21: indicators4h.ema?.fast,
+          ema50: indicators4h.ema?.slow,
+          price: candles15m[candles15m.length - 1]?.close,
           macd: indicators4h.macd?.histogram > 0 ? 'positive' : 'negative'
         },
-        daily: { trend: 'NEUTRAL' }, // We don't have daily data
+        daily: { trend: 'NEUTRAL' },
         overallTrend: indicators4h.ema?.fast > indicators4h.ema?.slow ? 'BULLISH' : 'BEARISH'
       };
-      
-      // Call analyzeMarket with correct parameter order
+
       const aiAnalysis = await this.aiAnalyzer.analyzeMarket(
         this.symbol,
         indicators15m,
         candles15m,
-        {}, // config can be empty, aiAnalyzer loads strategy.md internally
-        trendContext
+        {
+          _strategyContent: this.strategyContent,
+          _trendContext: trendContext,
+          timeframe: '15m'
+        }
       );
-      
+
       this.stats.aiCalls++;
       return aiAnalysis;
     } catch (error) {
@@ -410,6 +432,9 @@ class BacktestEngine {
     // Initialize database
     await this.initDatabase();
     
+    // Load strategy once (used for every AI call)
+    this.strategyContent = this.loadStrategy();
+
     console.log('\n⏱️  Processing candles...');
     
     // Determine start index (resume from checkpoint or start fresh)

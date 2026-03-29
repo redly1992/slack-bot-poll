@@ -6,8 +6,11 @@ class InstructionParser {
   constructor(filePath) {
     this.filePath = filePath;
     this.config = null;
-    // Strategy file lives alongside the instruction file
-    this.strategyPath = path.join(path.dirname(filePath), 'strategy.md');
+    // Strategy file: use learned-strategy.md alongside the instruction file, fallback to strategy-english.md
+    const dir = path.dirname(filePath);
+    const learnedPath = path.join(dir, 'learned-strategy.md');
+    const englishPath = path.join(dir, 'strategy-english.md');
+    this.strategyPath = fs.existsSync(learnedPath) ? learnedPath : englishPath;
   }
 
   /**

@@ -14,7 +14,7 @@ class PricePredictionTool {
   constructor() {
     this.exchange = process.env.EXCHANGE || 'binance';
     this.marketData = new MarketDataFetcher(this.exchange);
-    this.parser = new InstructionParser('instructions/strategy.md');
+    this.parser = new InstructionParser('instructions/learned-strategy.md');
     
     // Initialize DeepSeek AI
     const aiProvider = process.env.AI_PROVIDER || 'deepseek';
