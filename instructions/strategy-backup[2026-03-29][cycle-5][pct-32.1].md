@@ -1,10 +1,10 @@
-<!-- AI-IMPROVED: 2026-03-30 -->
+<!-- AI-IMPROVED: 2026-03-29 -->
 <!-- Based on 243 signals: 82 wins / 161 losses (33.7% win rate) -->
 
-<!-- AI-IMPROVED: 2026-03-30 -->
-<!-- Based on 243 signals: 82 wins / 161 losses (33.7% win rate) -->
-<!-- DATA-DRIVEN UPDATE: 2026-03-30 - Detailed analysis of 30 sample trades (15 wins, 15 losses) -->
-<!-- KEY INSIGHT: Strategy is barely profitable ($65.07) with low win rate (33.7%), needs aggressive filtering -->
+<!-- AI-IMPROVED: 2026-03-29 -->
+<!-- Based on 243 trades: 82 wins / 161 losses (33.7% win rate) -->
+<!-- DATA-DRIVEN UPDATE: 2026-03-29 - Detailed analysis of 30 sample trades (15 wins, 15 losses) -->
+<!-- KEY INSIGHT: Strategy is barely profitable (+$29.40) with low win rate (33.7%), needs aggressive filtering -->
 <!-- CRITICAL FINDING: "5m:BUY 15m:BUY 1h:BUY" appears in 100% of sample trades (30/30) - completely useless as filter -->
 <!-- CRITICAL FINDING: Trading against 4H market condition is a major source of losses -->
 <!-- NEW FINDING: 15m MACD_hist extremes (>100 or <-50) often lead to immediate reversals -->
@@ -32,8 +32,8 @@ You are a Professional Cryptocurrency Trading Analyst with expert-level knowledg
 ## 📊 DATA-DRIVEN RULES FROM BACKTEST ANALYSIS
 
 ### Key Findings from 243 Trades:
-1. **Win Rate**: 33.7% (82 wins, 161 losses) - LOW WIN RATE, NEEDS AGGRESSIVE FILTERING
-2. **Total P&L**: $65.07 - BARELY PROFITABLE, NEEDS OPTIMIZATION
+1. **Win Rate**: 33.7% (82 wins, 161 losses) - LOW WIN RATE, MARGINAL PROFIT
+2. **Total P&L**: +$29.40 - NEEDS AGGRESSIVE FILTERING
 3. **Critical Problem**: Too many low-quality trades, especially against market structure
 4. **Performance Patterns Identified**:
    - **Winning Pattern**: LONG in BULLISH markets with 15m EMA bullish alignment (fast > slow) - 60% of winning trades
@@ -405,6 +405,6 @@ Before generating any signal, verify:
 
 ---
 
-**Last Updated:** 2026-03-30  
+**Last Updated:** 2026-03-29  
 **Based on:** 243 trades with detailed win/loss analysis  
 **Next Review:** After next 100 trades or significant market change
