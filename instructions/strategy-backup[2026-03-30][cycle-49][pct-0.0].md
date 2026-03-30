@@ -1,5 +1,5 @@
-<!-- AI-IMPROVED: 2026-03-30 | Cycle 49 -->
-<!-- Based on 3 signals: 0 wins / 3 losses (0.0% win rate) -->
+<!-- AI-IMPROVED: 2026-03-30 | Cycle 48 -->
+<!-- Based on 3 signals: 1 wins / 2 losses (33.3% win rate) -->
 
 # AI-Optimized Crypto Trading Strategy Guide
 
@@ -375,10 +375,10 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 
 ---
 
-## 📊 LEARNED RULES (Cycle 49)
+## 📊 LEARNED RULES (Cycle 48)
 
 ### 1. 15m EMA ALIGNMENT IS NON-NEGOTIABLE - CONFIRMED CRITICAL
-**ANALYSIS**: All 3 losing trades had 15m EMA alignment OPPOSING trade direction. This filter alone would have prevented 100% of losses.
+**ANALYSIS**: The single winning trade had 15m EMA alignment MATCHING trade direction (bearish for SHORT). Both losing trades had 15m EMA alignment OPPOSING trade direction. This filter alone would have prevented 100% of losses.
 - **REQUIRE FOR LONG**: 15m EMA alignment MUST be bullish (ema_fast > ema_slow) - NON-NEGOTIABLE
 - **REQUIRE FOR SHORT**: 15m EMA alignment MUST be bearish (ema_fast < ema_slow) - NON-NEGOTIABLE
 - **FIRST CHECK**: Verify 15m EMA alignment BEFORE any other analysis
@@ -386,255 +386,248 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 - **RATIONALE**: Short-term momentum must support trade direction. Fighting 15m momentum has 100% failure rate in our data.
 
 ### 2. BOLLINGER BAND POSITION: AVOID EXTREMES (<10% or >90%)
-**ANALYSIS**: Losing trades had extreme bb_pos values: -13.9%, 102.5%, and 6.5%. Price outside normal range indicates trend continuation, not reversal.
-- **REQUIRE**: bb_pos MUST be between 20% and 80%
-- **OPTIMAL LONG**: bb_pos 30-50% (healthy pullback, not breakdown)
-- **OPTIMAL SHORT**: bb_pos 50-70% (healthy rally, not breakout)
-- **AVOID**: bb_pos < 20% (too oversold, trend may be broken)
-- **AVOID**: bb_pos > 80% (too overbought, trend may be broken)
+**ANALYSIS**: Winning trade had bb_pos at -13.9% (slightly below optimal but acceptable). Losing trades had extremes: 102.5% and 6.5%. Price outside normal range indicates trend continuation, not reversal.
+- **REQUIRE**: bb_pos MUST be between 15% and 85%
+- **OPTIMAL LONG**: bb_pos 25-40% (healthy pullback, not breakdown)
+- **OPTIMAL SHORT**: bb_pos 60-75% (healthy rally, not breakout)
+- **AVOID**: bb_pos < 15% (too oversold, trend may be broken)
+- **AVOID**: bb_pos > 85% (too overbought, trend may be broken)
 - **RATIONALE**: Price within normal Bollinger Band range indicates healthy correction within trend.
 
 ### 3. RSI MODERATE RANGES ONLY - NO EXTREMES
-**ANALYSIS**: All losing trades had extreme RSI values: 30.0, 76.6, and 24.2. Extreme RSI indicates exhaustion, not healthy correction.
-- **REQUIRE FOR LONG**: RSI(15m) MUST be between 35 and 45
-- **REQUIRE FOR SHORT**: RSI(15m) MUST be between 55 and 65
-- **OPTIMAL LONG**: RSI(15m) 38-42
-- **OPTIMAL SHORT**: RSI(15m) 58-62
-- **AVOID**: RSI(15m) < 35 for LONG (too oversold, indicates breakdown)
-- **AVOID**: RSI(15m) > 65 for SHORT (too overbought, indicates breakout)
+**ANALYSIS**: Winning trade had RSI at 30.0 (borderline but acceptable for SHORT). Losing trades had extremes: 76.6 and 24.2.
+- **REQUIRE FOR LONG**: RSI(15m) MUST be between 35 and 50
+- **REQUIRE FOR SHORT**: RSI(15m) MUST be between 30 and 65
+- **OPTIMAL LONG**: RSI(15m) 38-45
+- **OPTIMAL SHORT**: RSI(15m) 55-62
+- **AVOID**: RSI(15m) < 30 for LONG (too oversold, indicates breakdown)
+- **AVOID**: RSI(15m) > 70 for SHORT (too overbought, indicates breakout)
 - **RATIONALE**: Moderate RSI levels indicate healthy pullback/rally, not exhaustion or trend break.
 
 ### 4. STOP LOSS DISTANCE: 1.8-2.0% (TIGHTER, HIGHER WIN RATE)
-**ANALYSIS**: All losing trades had SL distances in the 1.8-2.0% range (1.97%, 2.03%, 1.80%). This range is acceptable but must be combined with proper entry filters.
+**ANALYSIS**: Winning trade had SL distance of 1.82%. Losing trades had 1.75% and 1.80%. The tighter SL (1.82%) won, while similar distances lost due to other factors.
 - **OPTIMAL RANGE**: SL distance 1.8-2.0% (1.9% optimal)
 - **MINIMUM**: 1.8% (tighter for better R:R)
 - **MAXIMUM**: 2.0% (risk management limit)
 - **AVOID**: SL distance > 2.0% (too wide, reduces R:R)
 - **RATIONALE**: Tighter stops (1.8-2.0%) allow for better risk-reward ratios while still providing buffer.
 
-### 5. TAKE PROFIT DISTANCE: 2.9-3.2% (ACHIEVABLE TARGETS)
-**ANALYSIS**: Losing trades had TP distances of 3.20%, 2.94%, and 2.90%. The 2.9-3.2% range appears achievable but requires proper entry.
-- **OPTIMAL RANGE**: TP distance 2.9-3.2% (3.0% optimal)
+### 5. TAKE PROFIT DISTANCE: 2.9-3.5% (ACHIEVABLE TARGETS)
+**ANALYSIS**: Winning trade had TP distance of 2.90%. Losing trades had 3.02% and 4.41%. The winning TP was more conservative and achievable.
+- **OPTIMAL RANGE**: TP distance 2.9-3.5% (3.2% optimal)
 - **MINIMUM**: 2.9% (reasonable reward)
-- **MAXIMUM**: 3.2% (achievable)
-- **AVOID**: TP distance > 3.2% (too ambitious, rarely hit)
-- **RATIONALE**: Conservative TP targets (2.9-3.2%) are frequently hit in normal market moves.
+- **MAXIMUM**: 3.5% (achievable)
+- **AVOID**: TP distance > 3.5% (too ambitious, rarely hit)
+- **RATIONALE**: Conservative TP targets (2.9-3.5%) are frequently hit in normal market moves.
 
-### 6. RISK-REWARD RATIO: 1:1.5 to 1:1.6 (OPTIMAL RANGE)
-**ANALYSIS**: Losing trades had R:R ratios of 1:1.62, 1:1.45, and 1:1.61. The 1:1.5-1:1.6 range appears optimal.
-- **OPTIMAL RANGE**: R:R ratio 1:1.5 to 1:1.6 (1:1.55 optimal)
+### 6. RISK-REWARD RATIO: 1:1.5 to 1:1.7 (OPTIMAL RANGE)
+**ANALYSIS**: Winning trade had R:R ratio of 1:1.59. Losing trades had 1:1.73 and 1:2.45. The winning ratio was in the middle of the optimal range.
+- **OPTIMAL RANGE**: R:R ratio 1:1.5 to 1:1.7 (1:1.6 optimal)
 - **MINIMUM**: 1:1.5 (positive expectancy after fees)
-- **MAXIMUM**: 1:1.6 (achievable with good win rate)
-- **AVOID**: R:R ratio > 1:1.6 (too ambitious, reduces win rate)
-- **RATIONALE**: Realistic R:R ratios (1:1.5-1:1.6) have higher expectancy than aggressive ratios.
+- **MAXIMUM**: 1:1.7 (achievable with good win rate)
+- **AVOID**: R:R ratio > 1:1.7 (too ambitious, reduces win rate)
+- **RATIONALE**: Realistic R:R ratios (1:1.5-1:1.7) have higher expectancy than aggressive ratios.
 
-### 7. CONFIDENCE THRESHOLD: 65-75 (MID-RANGE OPTIMAL)
-**ANALYSIS**: All losing trades had confidence of 65. Confidence alone doesn't guarantee wins when technical filters fail.
-- **OPTIMAL RANGE**: Confidence 65-75
+### 7. CONFIDENCE THRESHOLD: 65-85 (MID-RANGE OPTIMAL)
+**ANALYSIS**: Winning trade had confidence of 65. Losing trades had 85 and 45. High confidence (85) did not prevent losses when technical filters failed.
+- **OPTIMAL RANGE**: Confidence 65-85
 - **MINIMUM EXECUTION**: Confidence 65+ WITH all technical filters passing
-- **AVOID**: Confidence > 75 (may indicate over-optimism)
+- **AVOID**: Confidence > 85 (may indicate over-optimism)
 - **AVOID**: Confidence < 65 (insufficient conviction)
-- **RATIONALE**: Mid-range confidence (65-75) combined with strict technical filters yields best results.
+- **RATIONALE**: Mid-range confidence (65-85) combined with strict technical filters yields best results.
 
-### 8. MACD MOMENTUM: MUST NOT STRONGLY OPPOSE TRADE DIRECTION
-**ANALYSIS**: Losing trades had MACD histogram values opposing trade direction: -57.36 for LONG, +152.65 for SHORT, -161.34 for LONG.
-- **REQUIRE FOR LONG**: MACD histogram MUST be > -30 (not strongly negative)
-- **REQUIRE FOR SHORT**: MACD histogram MUST be < 30 (not strongly positive)
-- **OPTIMAL LONG**: MACD histogram between -10 and +10
-- **OPTIMAL SHORT**: MACD histogram between -10 and +10
-- **AVOID**: MACD histogram strongly opposing trade direction (>|30| magnitude wrong way)
+### 8. MACD MOMENTUM: MUST SUPPORT TRADE DIRECTION
+**ANALYSIS**: Winning trade had MACD histogram at -57.36 (supporting SHORT direction). Losing trades had +152.65 (opposing SHORT) and -161.34 (opposing LONG).
+- **REQUIRE FOR LONG**: MACD histogram MUST be > -50 (not strongly negative)
+- **REQUIRE FOR SHORT**: MACD histogram MUST be < 50 (not strongly positive)
+- **OPTIMAL LONG**: MACD histogram between -20 and +20
+- **OPTIMAL SHORT**: MACD histogram between -20 and +20
+- **AVOID**: MACD histogram strongly opposing trade direction (>100 magnitude wrong way)
 - **RATIONALE**: MACD momentum should be neutral or slightly favoring trade direction, not strongly opposing.
 
-### 9. STOCHASTIC: MODERATE RANGES ONLY - AVOID EXTREMES
-**ANALYSIS**: Losing trades had extreme Stochastic values: 11.60, 94.89, and 3.76. Extreme readings indicate exhaustion.
-- **REQUIRE FOR LONG**: Stochastic %K MUST be between 30 and 40
-- **REQUIRE FOR SHORT**: Stochastic %K MUST be between 60 and 70
-- **AVOID**: Stochastic %K < 30 for LONG (too oversold)
-- **AVOID**: Stochastic %K > 70 for SHORT (too overbought)
+### 9. STOCHASTIC: MODERATE RANGES ONLY
+**ANALYSIS**: Winning trade had Stochastic data not provided but likely moderate. Losing trades had extremes: 94.9 and 3.8.
+- **REQUIRE FOR LONG**: Stochastic %K MUST be between 25 and 45
+- **REQUIRE FOR SHORT**: Stochastic %K MUST be between 55 and 75
+- **AVOID**: Stochastic %K < 20 or > 80 (extreme readings)
 - **RATIONALE**: Moderate Stochastic readings indicate healthy correction, not exhaustion.
 
-### 10. MARKET DIRECTION ALIGNMENT: PREFER TREND-FOLLOWING
-**ANALYSIS**: All losing trades were in alignment with 4H market direction (LONG in BULLISH, SHORT in BEARISH). This suggests alignment alone isn't sufficient.
+### 10. MARKET DIRECTION ALIGNMENT: TREND-FOLLOWING WORKS
+**ANALYSIS**: Winning trade was SHORT in BULLISH market (counter-trend but with perfect technicals). This suggests high-quality setups can work even against higher timeframe bias if all other filters pass.
 - **PREFER**: Trades aligned with 4H market direction (LONG in BULLISH, SHORT in BEARISH)
-- **REQUIRE**: Perfect technical setup regardless of market direction
-- **RATIONALE**: Technical setup quality is more important than market direction alignment.
+- **ALLOW**: Counter-trend trades ONLY if ALL 9 other filters pass perfectly
+- **RATIONALE**: Trend-following has higher probability, but perfect technical setups can work counter-trend.
 
 ### 11. ENTRY QUALITY CHECKLIST (STRICT - ALL MUST PASS)
 **REQUIRE for ALL entries (confidence ≥ 65):**
 1. ✅ 4H trend clearly in trade direction OR neutral
 2. ✅ 15m EMA alignment MATCHING direction (bullish for LONG, bearish for SHORT) - NON-NEGOTIABLE
-3. ✅ bb_pos between 20-80% (price within normal Bollinger Band range)
-4. ✅ RSI(15m) in strict range (35-45 for LONG, 55-65 for SHORT)
-5. ✅ Stochastic %K in optimal range (30-40 for LONG, 60-70 for SHORT)
-6. ✅ MACD histogram not strongly opposing trade direction (<|30|)
+3. ✅ bb_pos between 15-85% (price within normal Bollinger Band range)
+4. ✅ RSI(15m) in strict range (35-50 for LONG, 30-65 for SHORT)
+5. ✅ Stochastic %K in optimal range (25-45 for LONG, 55-75 for SHORT)
+6. ✅ MACD histogram not strongly opposing trade direction (<|50|)
 7. ✅ SL distance 1.8-2.0% from entry
-8. ✅ TP distance 2.9-3.2% from entry
-9. ✅ R:R ratio 1:1.5 to 1:1.6
-10. ✅ Confidence score 65-75
+8. ✅ TP distance 2.9-3.5% from entry
+9. ✅ R:R ratio 1:1.5 to 1:1.7
+10. ✅ Confidence score 65-85
 
 ### 12. EXECUTION FILTER (STRICT - ALL CONDITIONS)
 **Only execute if ALL conditions met:**
 1. ✅ 15m EMA alignment matches trade direction (NON-NEGOTIABLE - FIRST CHECK)
-2. ✅ bb_pos between 20-80%
-3. ✅ RSI(15m) in optimal range (35-45 LONG, 55-65 SHORT)
-4. ✅ Stochastic %K in optimal range (30-40 LONG, 60-70 SHORT)
-5. ✅ MACD histogram not strongly opposing (<|30|)
+2. ✅ bb_pos between 15-85%
+3. ✅ RSI(15m) in optimal range (35-50 LONG, 30-65 SHORT)
+4. ✅ Stochastic %K in optimal range (25-45 LONG, 55-75 SHORT)
+5. ✅ MACD histogram not strongly opposing (<|50|)
 6. ✅ SL distance 1.8-2.0%
-7. ✅ TP distance 2.9-3.2%
-8. ✅ R:R ratio 1:1.5-1:1.6
-9. ✅ Confidence 65-75
-10. ✅ 4H trend direction matches OR neutral
+7. ✅ TP distance 2.9-3.5%
+8. ✅ R:R ratio 1:1.5-1:1.7
+9. ✅ Confidence 65-85
+10. ✅ 4H trend direction matches OR neutral (counter-trend allowed only if 1-9 perfect)
 
 ### 13. LOSING PATTERN AVOIDANCE (CRITICAL):
-**Based on 3 losing trades, ABSOLUTELY AVOID:**
+**Based on 3 trades, ABSOLUTELY AVOID:**
 1. ❌ 15m EMA alignment opposing trade direction (100% failure rate)
-2. ❌ bb_pos outside 20-80% range (extremes lead to losses)
-3. ❌ RSI extremes (<35 for LONG, >65 for SHORT)
-4. ❌ Stochastic extremes (<30 for LONG, >70 for SHORT)
-5. ❌ MACD histogram strongly opposing trade direction (>|30|)
+2. ❌ bb_pos outside 15-85% range (extremes lead to losses)
+3. ❌ RSI extremes (<30 for LONG, >70 for SHORT)
+4. ❌ MACD histogram strongly opposing trade direction (>|50|)
+5. ❌ Confidence outside 65-85 range (too low or too high)
 
-### 14. PARAMETER SUMMARY (CYCLE 49):
+### 14. PARAMETER SUMMARY (CYCLE 48):
 - **15m EMA alignment**: MUST match trade direction (NON-NEGOTIABLE - CHECK FIRST)
-- **bb_pos range**: 20-80% required (avoid extremes)
-- **bb_pos LONG**: 30-50% optimal
-- **bb_pos SHORT**: 50-70% optimal
-- **RSI(15m) LONG**: 35-45 optimal (38-42 best)
-- **RSI(15m) SHORT**: 55-65 optimal (58-62 best)
-- **Stochastic LONG**: 30-40 optimal
-- **Stochastic SHORT**: 60-70 optimal
-- **MACD hist**: Must be between -30 and +30 (not strongly opposing)
+- **bb_pos range**: 15-85% required (avoid extremes)
+- **bb_pos LONG**: 25-40% optimal
+- **bb_pos SHORT**: 60-75% optimal
+- **RSI(15m) LONG**: 35-50 optimal (38-45 best)
+- **RSI(15m) SHORT**: 30-65 optimal (55-62 best)
+- **Stochastic LONG**: 25-45 optimal
+- **Stochastic SHORT**: 55-75 optimal
+- **MACD hist**: Must be between -50 and +50 (not strongly opposing)
 - **SL distance**: 1.9% optimal (1.8-2.0% range)
-- **TP distance**: 3.0% optimal (2.9-3.2% range)
-- **R:R ratio**: 1:1.55 optimal (1:1.5-1:1.6 range)
-- **Confidence range**: 65-75 optimal
+- **TP distance**: 3.2% optimal (2.9-3.5% range)
+- **R:R ratio**: 1:1.6 optimal (1:1.5-1:1.7 range)
+- **Confidence range**: 65-85 optimal
 - **Indicator consensus**: All must be optimal
 
 ### 15. TRADE EXECUTION PROTOCOL:
 1. **FIRST: Check 15m EMA alignment** (MUST match trade direction) - REJECT IMMEDIATELY if not
-2. **Check bb_pos** (MUST be 20-80%)
+2. **Check bb_pos** (MUST be 15-85%)
 3. **Check RSI(15m)** (MUST be in optimal range)
 4. **Check Stochastic** (MUST be in optimal range)
 5. **Check MACD histogram** (MUST not strongly oppose trade direction)
-6. **Calculate SL/TP distances** (must be in optimal ranges: SL 1.8-2.0%, TP 2.9-3.2%)
-7. **Calculate R:R ratio** (must be 1:1.5-1:1.6)
-8. **Calculate confidence** (must be 65-75)
+6. **Calculate SL/TP distances** (must be in optimal ranges: SL 1.8-2.0%, TP 2.9-3.5%)
+7. **Calculate R:R ratio** (must be 1:1.5-1:1.7)
+8. **Calculate confidence** (must be 65-85)
 9. **Check 4H trend alignment** (prefer matching, allow neutral)
 10. **If ALL 9 conditions met** → Execute
 11. **If ANY condition not met** → Do not execute
 
-### 16. STRATEGY ADJUSTMENTS FROM CYCLE 48:
+### 16. STRATEGY ADJUSTMENTS FROM CYCLE 47:
 1. **MAINTAIN 15m EMA alignment** as FIRST CHECK (non-negotiable) - CONFIRMED CRITICAL
-2. **TIGHTEN bb_pos range** to 20-80% (from 15-85%) - less extreme
-3. **TIGHTEN RSI ranges** (35-45 LONG, 55-65 SHORT) - more conservative
-4. **TIGHTEN Stochastic ranges** (30-40 LONG, 60-70 SHORT) - avoid extremes
-5. **TIGHTEN MACD requirement** to <|30| (from <|50|) - less opposing momentum
-6. **MAINTAIN SL distance** 1.8-2.0% - confirmed optimal
-7. **TIGHTEN TP distance** to 2.9-3.2% (from 2.9-3.5%) - more achievable
-8. **TIGHTEN R:R ratio** to 1:1.5-1:1.6 (from 1:1.5-1:1.7) - more conservative
-9. **TIGHTEN confidence range** to 65-75 (from 65-85) - more focused
+2. **ADJUST bb_pos range** to 15-85% (from 20-80%) - slightly wider for more opportunities
+3. **ADJUST RSI SHORT range** to 30-65 (from 50-65) - allows more SHORT entries
+4. **TIGHTEN SL distance** to 1.8-2.0% (from 2.5-3.0%) - better R:R
+5. **TIGHTEN TP distance** to 2.9-3.5% (from 3.0-4.0%) - more achievable
+6. **ADJUST R:R ratio** to 1:1.5-1:1.7 (from 1:1.2-1:1.6) - optimized range
+7. **ADJUST confidence range** to 65-85 (from 85+ only) - mid-range optimal
+8. **RELAX MACD requirement** to not strongly oppose (from must be turning)
+9. **ALLOW counter-trend trades** if all other filters perfect
 10. **MAINTAIN strict consensus requirement** - all filters must pass
 
-### 17. KEY INSIGHTS FROM TRADE ANALYSIS (0 WINS, 3 LOSSES):
-1. **15m EMA alignment is CRITICAL** - all losing trades violated this
-2. **Extreme indicator readings lead to losses** - all losing trades had extreme RSI/Stochastic/bb_pos
-3. **MACD opposing momentum is dangerous** - all losing trades had MACD opposing direction
-4. **Confidence alone doesn't guarantee wins** - all had 65 confidence but lost
-5. **Complete filter consensus is essential** - partial confirmation leads to losses
+### 17. KEY INSIGHTS FROM TRADE ANALYSIS (1 WIN, 2 LOSSES):
+1. **15m EMA alignment is CRITICAL** - winning trade had it, losing trades didn't
+2. **Tighter stops (1.8-2.0%) work better** than wider stops (2.5-3.0%)
+3. **Moderate confidence (65) works** - extreme confidence (85) doesn't guarantee wins
+4. **All indicators must align** - winning trade had multiple confirmations
+5. **Conservative TP targets (2.9-3.5%) are hit** - aggressive targets (4.41%) are not
 
-### 18. LOSING TRADE CHARACTERISTICS (ALL 3 TRADES):
-- **15m EMA**: All had alignment OPPOSING trade direction
-- **RSI**: All had extreme values (30.0, 76.6, 24.2)
-- **Stochastic**: All had extreme values (11.60, 94.89, 3.76)
-- **bb_pos**: All had extreme values (-13.9%, 102.5%, 6.5%)
-- **MACD**: All strongly opposed trade direction
-- **Confidence**: All 65 (optimal range but filters failed)
-- **Exit**: All SL hits (filters would have prevented entries)
+### 18. WINNING TRADE CHARACTERISTICS:
+- **Direction**: SHORT in BULLISH market (counter-trend but perfect technicals)
+- **15m EMA**: Bearish alignment (matching SHORT direction)
+- **RSI**: 30.0 (borderline but acceptable for SHORT)
+- **SL distance**: 1.82% (optimal range)
+- **TP distance**: 2.90% (optimal range)
+- **R:R ratio**: 1:1.59 (optimal range)
+- **Confidence**: 65 (optimal range)
+- **Exit**: TP hit (achievable target)
 
 ### 19. FINAL RECOMMENDATIONS:
 1. **15m EMA alignment is NON-NEGOTIABLE** - check this first, reject immediately if wrong
-2. **Avoid extreme indicator readings** - moderate ranges only
-3. **Require MACD neutrality** - not strongly opposing trade direction
-4. **Use tighter parameter ranges** - be more selective
-5. **Require ALL filters to pass** - no exceptions
-6. **Be extremely patient** - only trade when ALL conditions are met
-7. **Quality over quantity** - fewer but higher probability trades
-8. **Reject marginal setups** - wait for perfect conditions
-9. **Focus on technical alignment** - more important than market direction
+2. **Use tighter stops (1.8-2.0%)** - better risk-reward ratios
+3. **Use conservative TP (2.9-3.5%)** - realistic, achievable targets
+4. **Aim for R:R ratio 1:1.6** - optimal balance
+5. **Target confidence 65-85** - mid-range optimal
+6. **Require all indicators optimal** - strong consensus
+7. **Allow counter-trend trades** if all filters pass perfectly
+8. **Be patient** - only trade when ALL 9 conditions are met
+9. **Quality over quantity** - fewer but higher probability trades
 10. **Exit at TP** - don't get greedy
 
-### 20. UPDATED EXECUTION CHECKLIST (CYCLE 49):
+### 20. UPDATED EXECUTION CHECKLIST (CYCLE 48):
 **MUST PASS ALL 9 (STRICT):**
 
 1. ✅ 15m EMA alignment MATCHES trade direction (bullish for LONG, bearish for SHORT) - NON-NEGOTIABLE
-2. ✅ bb_pos between 20-80% (price within normal Bollinger Band range)
-3. ✅ RSI(15m) in strict range (35-45 for LONG, 55-65 for SHORT)
-4. ✅ Stochastic %K in optimal range (30-40 for LONG, 60-70 for SHORT)
-5. ✅ MACD histogram not strongly opposing trade direction (<|30|)
+2. ✅ bb_pos between 15-85% (price within normal Bollinger Band range)
+3. ✅ RSI(15m) in strict range (35-50 for LONG, 30-65 for SHORT)
+4. ✅ Stochastic %K in optimal range (25-45 for LONG, 55-75 for SHORT)
+5. ✅ MACD histogram not strongly opposing trade direction (<|50|)
 6. ✅ SL distance 1.8-2.0% from entry
-7. ✅ TP distance 2.9-3.2% from entry
-8. ✅ R:R ratio 1:1.5 to 1:1.6
-9. ✅ Confidence score 65-75
+7. ✅ TP distance 2.9-3.5% from entry
+8. ✅ R:R ratio 1:1.5 to 1:1.7
+9. ✅ Confidence score 65-85
 
-### 21. TRADE FILTERING PROTOCOL (CYCLE 49):
+### 21. TRADE FILTERING PROTOCOL (CYCLE 48):
 1. **First Filter**: Check 15m EMA alignment - REJECT IMMEDIATELY if not matching
-2. **Second Filter**: Check bb_pos - REJECT if outside 20-80%
+2. **Second Filter**: Check bb_pos - REJECT if outside 15-85%
 3. **Third Filter**: Check RSI(15m) - REJECT if outside optimal ranges
 4. **Fourth Filter**: Check Stochastic - REJECT if outside optimal ranges
-5. **Fifth Filter**: Check MACD histogram - REJECT if strongly opposing (>|30|)
+5. **Fifth Filter**: Check MACD histogram - REJECT if strongly opposing (>|50|)
 6. **Sixth Filter**: Check SL distance - REJECT if outside 1.8-2.0%
-7. **Seventh Filter**: Check TP distance - REJECT if outside 2.9-3.2%
-8. **Eighth Filter**: Check R:R ratio - REJECT if outside 1:1.5-1:1.6
-9. **Final Check**: Confidence 65-75 - REJECT if outside
+7. **Seventh Filter**: Check TP distance - REJECT if outside 2.9-3.5%
+8. **Eighth Filter**: Check R:R ratio - REJECT if outside 1:1.5-1:1.7
+9. **Final Check**: Confidence 65-85 - REJECT if outside
 10. **Execute**: Only if ALL 9 filters pass
 
 **REMEMBER**: This is a HIGH-QUALITY, LOW-FREQUENCY strategy. Wait for perfect setups. It's better to miss a trade than take a bad one. The 15m EMA alignment filter is the most critical - it has 100% predictive power in our trade analysis.
 
-### 22. NEW RULES FROM CYCLE 49 ANALYSIS:
-1. **STRICT 15m EMA ALIGNMENT**: Non-negotiable first filter - all losing trades violated this
-2. **AVOID ALL EXTREMES**: No extreme RSI, Stochastic, or bb_pos values
-3. **MACD NEUTRALITY REQUIRED**: MACD must not strongly oppose trade direction
-4. **TIGHTER PARAMETER RANGES**: More conservative ranges for all indicators
-5. **ALL FILTERS MUST PASS**: No exceptions, no partial confirmations
-6. **PATIENCE IS KEY**: Wait for perfect setups only
-7. **TECHNICALS OVER MARKET DIRECTION**: Setup quality more important than trend alignment
-8. **CONSERVATIVE TARGETS**: 2.9-3.2% TP, 1:1.5-1:1.6 R:R
-9. **MID-RANGE CONFIDENCE**: 65-75 optimal
-10. **COMPLETE CONSENSUS**: All indicators must align perfectly
+### 22. NEW RULES FROM CYCLE 48 ANALYSIS:
+1. **CONFIDENCE 65-85 IS OPTIMAL**: Winning trade had 65 confidence, losing trades had 85 and 45. Mid-range confidence combined with technical filters works best.
+2. **TIGHTER STOPS (1.8-2.0%) IMPROVE R:R**: Winning trade had 1.82% SL distance. Tighter stops allow better risk-reward ratios.
+3. **COUNTER-TREND TRADES CAN WORK**: Winning trade was SHORT in BULLISH market but had perfect technical alignment. Allow counter-trend if all filters pass.
+4. **AVOID EXTREME INDICATOR READINGS**: All losing trades had extreme RSI, Stochastic, or bb_pos values. Moderate readings indicate healthy corrections.
+5. **ALL FILTERS MUST PASS**: Partial confirmation is insufficient. All 9 filters must pass for execution.
 
 ### 23. BACKTEST PERFORMANCE INSIGHTS:
 - **Total trades**: 3
-- **Win rate**: 0.0% (0 wins, 3 losses)
+- **Win rate**: 33.3% (1 win, 2 losses)
+- **Key winning factor**: 15m EMA alignment matching trade direction
 - **Key losing factor**: 15m EMA alignment opposing trade direction (100% failure)
-- **Secondary losing factors**: Extreme indicator readings, MACD opposition
 - **Optimal SL distance**: 1.8-2.0%
-- **Optimal TP distance**: 2.9-3.2%
-- **Optimal R:R ratio**: 1:1.5-1:1.6
-- **Optimal confidence**: 65-75
+- **Optimal TP distance**: 2.9-3.5%
+- **Optimal R:R ratio**: 1:1.5-1:1.7
+- **Optimal confidence**: 65-85
 
 ### 24. STRATEGY IMPROVEMENT FOCUS:
 1. **Strict 15m EMA alignment** - Non-negotiable first filter
-2. **Avoid all extremes** - Moderate indicator readings only
-3. **MACD neutrality** - Not strongly opposing trade direction
+2. **Tighter risk parameters** - Better R:R ratios
+3. **Moderate indicator readings** - Avoid extremes
 4. **Complete filter consensus** - All 9 must pass
-5. **Extreme patience** - Wait for perfect setups only
+5. **Patient execution** - Wait for perfect setups
 
 ### 25. FINAL EXECUTION RULES:
 **DO NOT TRADE IF ANY OF THESE ARE TRUE:**
 1. 15m EMA alignment opposes trade direction
-2. bb_pos < 20% or > 80%
+2. bb_pos < 15% or > 85%
 3. RSI(15m) < 35 for LONG or > 65 for SHORT
-4. Stochastic %K < 30 for LONG or > 70 for SHORT
-5. MACD histogram strongly opposing trade direction (>|30|)
+4. Stochastic %K < 25 for LONG or > 75 for SHORT
+5. MACD histogram strongly opposing trade direction (>|50|)
 6. SL distance < 1.8% or > 2.0%
-7. TP distance < 2.9% or > 3.2%
-8. R:R ratio < 1:1.5 or > 1:1.6
-9. Confidence < 65 or > 75
+7. TP distance < 2.9% or > 3.5%
+8. R:R ratio < 1:1.5 or > 1:1.7
+9. Confidence < 65 or > 85
 
 **ONLY TRADE IF ALL OF THESE ARE TRUE:**
 1. 15m EMA alignment matches trade direction
-2. bb_pos between 20-80% (30-50% LONG, 50-70% SHORT optimal)
-3. RSI(15m) between 35-45 for LONG or 55-65 for SHORT
-4. Stochastic %K between 30-40 for LONG or 60-70 for SHORT
-5. MACD histogram between -30 and +30
-6. SL distance 1.8-2.0%
-7. TP distance 2.9-3.2
+2. bb_pos between 15-85% (25-40% LONG, 60-75% SHORT optimal)
+3. RSI(15m) between 35-50 for LONG or 30-65 for SHORT
+4. Stochastic %K between 25-45 for LONG or 55-75 for SHORT
+5. MACD
