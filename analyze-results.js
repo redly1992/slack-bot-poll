@@ -394,7 +394,7 @@ class ResultsAnalyzer {
     console.log(`${'='.repeat(70)}`);
     console.log('\n📝 NEXT STEPS:\n');
     console.log('1. Review the recommendations above');
-    console.log('2. Update instructions/strategy.md with changes');
+    console.log('2. Update instructions/learned-strategy.md with changes');
     console.log('3. Re-run backtest to verify improvements:');
     console.log('   rm backtest-results.db backtest-checkpoint.json');
     console.log('   npm run backtest');

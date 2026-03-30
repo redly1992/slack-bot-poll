@@ -95,9 +95,21 @@ class PnLCalculator {
   findExit(signal, candles) {
     const entryTimestamp = signal.timestamp;
     const direction = signal.direction;
-    const stopLoss = signal.stop_loss_price;
-    const takeProfit = signal.take_profit_price;
+    const entryPrice = signal.entry_price;
     const maxExitTimestamp = entryTimestamp + (this.holdHours * 60 * 60 * 1000);
+    let stopLoss = signal.stop_loss_price;
+    let takeProfit = signal.take_profit_price;
+
+    // Validate SL/TP are on the correct side of entry — discard if wrong
+    if (stopLoss && takeProfit) {
+      if (direction === 'LONG' && (stopLoss >= entryPrice || takeProfit <= entryPrice)) {
+        console.warn(`  ⚠️  Signal #${signal.id} LONG has invalid SL/TP (SL=${stopLoss}, TP=${takeProfit}, entry=${entryPrice}) — using time exit`);
+        stopLoss = null; takeProfit = null;
+      } else if (direction === 'SHORT' && (stopLoss <= entryPrice || takeProfit >= entryPrice)) {
+        console.warn(`  ⚠️  Signal #${signal.id} SHORT has invalid SL/TP (SL=${stopLoss}, TP=${takeProfit}, entry=${entryPrice}) — using time exit`);
+        stopLoss = null; takeProfit = null;
+      }
+    }
 
     // Find starting candle index (first candle after entry)
     const startIdx = candles.findIndex(c => c.timestamp > entryTimestamp);
