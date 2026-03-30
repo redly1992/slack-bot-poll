@@ -25,6 +25,7 @@
     "backtest-v2": "node backtest-v2.js",
     "improve-v2": "node improve-v2.js",
     "auto-cycle-v2": "nohup node auto-cycle-v2.js >> auto-cycle-v2.log 2>&1 &",
+    "ac": "node auto-cycle-v2.js",
     "stop-v2": "node stop-v2.js",
     "check-v2": "node check-v2-progress.js"
   },
