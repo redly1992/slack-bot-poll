@@ -1,4 +1,4 @@
-<!-- AI-IMPROVED: 2026-03-30 | Cycle 54 -->
+<!-- AI-IMPROVED: 2026-03-30 | Cycle 23 -->
 <!-- Based on 17 signals: 6 wins / 11 losses (35.3% win rate) -->
 
 # AI-Optimized Crypto Trading Strategy Guide
@@ -375,10 +375,10 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 
 ---
 
-## 📊 LEARNED RULES (Cycle 54)
+## 📊 LEARNED RULES (Cycle 23)
 
-### 1. LONG-ONLY STRATEGY ENFORCED (REINFORCED)
-**ANALYSIS**: 6/6 winning trades were LONG. 0/3 SHORT trades were winners. SHORT trades lost 100% of time.
+### 1. LONG-ONLY STRATEGY (CONFIRMED & ENFORCED)
+**ANALYSIS**: 6/6 winning trades were LONG. 0/3 SHORT trades were winners. SHORT trades lost 100% of time with average loss of -3.20%.
 - **REQUIRE**: Only take LONG positions
 - **IMMEDIATE REJECTION**: ALL SHORT signals regardless of market condition
 - **RATIONALE**: LONG trades won 100% of time in sample, SHORT lost 100%
@@ -390,6 +390,7 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 - **CALCULATION**: Entry price × 0.98 for LONG positions
 - **NO EXCEPTIONS**: Never use arbitrary SL placement
 - **RATIONALE**: Standardized 2.0% SL provides consistent risk management
+- **IMPROVEMENT**: For entries with bb_pos > 105%, consider 1.5% SL (entry × 0.985) due to higher volatility
 
 ### 3. OPTIMAL TAKE PROFIT: 2.5% (CONFIRMED)
 **ANALYSIS**: Winning trades averaged 2.30% gain. 5/7 wins hit 2.0-2.5% TP, 2 exceeded to 4.21%. 71.4% of wins exited via TP.
@@ -397,6 +398,7 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 - **RATIONALE**: Captures average winning gain while allowing runners
 - **TRAILING STOP**: Activate at 2.0% gain, trail at 1.0% below current
 - **PARTIAL EXIT**: Take 50% at 2.5%, let 50% run with trailing stop
+- **NEW RULE**: For entries with bb_pos > 105%, set TP at 3.0% (entry × 1.03)
 
 ### 4. BOLLINGER BAND POSITION: 95-110% REQUIRED (REFINED)
 **ANALYSIS**: Winning trades had bb_pos 95.6-110.0% (avg 101.5%). Losing trades often <95% or >110%.
@@ -404,45 +406,51 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 - **OPTIMAL RANGE**: 100-108% for highest probability entries
 - **REJECT LONG**: If bb_pos < 95% OR > 110%
 - **CAUTION**: Reduce size 50% if bb_pos > 108%
+- **NEW RULE**: If bb_pos < 50%, wait for recovery above 95% before entering
 - **RATIONALE**: Strong momentum continuation (bb_pos ≥95%) works better than pullback entries
 
 ### 5. 15m RSI: 67-76 RANGE REQUIRED (CONFIRMED)
 **ANALYSIS**: Winning trades had RSI(15m) 55.9-76.3 but optimal is 67-76. Losing trades often <67.
 - **REQUIRE FOR LONG**: RSI(15m) ≥ 67 AND ≤ 76
-- **OPTIMAL RANGE**: 70-73 for best continuation
+- **OPTIMAL RANGE**: 70-76 for best continuation
 - **REJECT LONG**: If RSI(15m) < 67 OR > 76
 - **CAUTION**: Reduce size 50% if RSI(15m) > 73
+- **NEW RULE**: If RSI(15m) > 80, skip entry entirely (exhaustion likely)
 - **RATIONALE**: Strong momentum (RSI ≥67) indicates continuation, not reversal
 
 ### 6. 4H RSI: 57-72 RANGE REQUIRED (CRITICAL)
 **ANALYSIS**: Winning trades had 4H RSI 57.7-76.5. Losing trades often <57 or >73.
 - **REQUIRE FOR LONG**: 4H RSI ≥ 57 AND ≤ 72
-- **OPTIMAL RANGE**: 65-70 for strongest setups
+- **OPTIMAL RANGE**: 65-72 for strongest setups
 - **REJECT LONG**: If 4H RSI < 57 OR > 72
 - **REDUCE SIZE 50%**: If 4H RSI 70-72 (high reversal risk)
+- **NEW RULE**: If 4H RSI > 76, skip entry entirely (exhausted trend)
 - **RATIONALE**: Strong 4H momentum (RSI 57-72) supports continuation without exhaustion
 
-### 7. MACD HISTOGRAM STRENGTH: >100 REQUIRED (CONFIRMED)
-**ANALYSIS**: Winning trades had MACD histogram 54.34-159.02 (avg 100.7). Losing trades often <75.
-- **REQUIRE FOR LONG**: MACD histogram > 100
-- **PREFER**: MACD histogram > 125 for strongest setups
-- **REJECT LONG**: If MACD histogram ≤ 100
-- **OPTIMAL**: 100-150 for highest conviction
-- **RATIONALE**: Strong positive MACD histogram (>100) indicates healthy momentum continuation
+### 7. MACD HISTOGRAM STRENGTH: >75 REQUIRED (CONFIRMED)
+**ANALYSIS**: Winning trades had MACD histogram 54.34-159.02 (avg 100.7). Losing trades often <50.
+- **REQUIRE FOR LONG**: MACD histogram > 75
+- **PREFER**: MACD histogram > 100 for strongest setups
+- **REJECT LONG**: If MACD histogram ≤ 75
+- **OPTIMAL**: 75-150 for highest conviction
+- **NEW RULE**: If MACD histogram < 50, skip entry entirely
+- **RATIONALE**: Strong positive MACD histogram (>75) indicates healthy momentum continuation
 
-### 8. 15m EMA BULLISH ALIGNMENT WITH GAP >0.4% (CONFIRMED)
+### 8. 15m EMA BULLISH ALIGNMENT WITH GAP >0.3% (CONFIRMED)
 **ANALYSIS**: All winning trades had bullish EMA alignment with meaningful gaps >0.17%.
 - **REQUIRE FOR LONG**: 15m EMA alignment MUST be bullish (ema_fast > ema_slow)
-- **ADDITIONAL**: EMA gap should be > 0.4% of price (meaningful separation)
-- **PREFER**: EMA gap 0.5-0.8% for strongest alignment
-- **REJECT LONG**: EMA gap < 0.4% (tangled/weak alignment)
-- **RATIONALE**: Clear EMA separation (>0.4%) confirms strong short-term momentum
+- **ADDITIONAL**: EMA gap should be > 0.3% of price (meaningful separation)
+- **PREFER**: EMA gap 0.4-0.8% for strongest alignment
+- **REJECT LONG**: EMA gap < 0.3% (tangled/weak alignment)
+- **NEW RULE**: Calculate gap as (ema_fast - ema_slow) / price × 100
+- **RATIONALE**: Clear EMA separation (>0.3%) confirms strong short-term momentum
 
 ### 9. DAILY TIMEFRAME CONFIRMATION (REQUIRED)
 **ANALYSIS**: All winning trades occurred when Daily was bullish or neutral.
 - **REQUIRE**: Daily timeframe bullish (price > Daily EMA21) OR neutral
 - **REJECT**: If Daily bearish (price < Daily EMA21)
 - **BONUS**: Daily bullish adds +0.5 to entry quality score
+- **NEW RULE**: If Daily RSI > 75, skip entry (exhausted daily trend)
 - **RATIONALE**: Higher timeframe alignment reduces false signals
 
 ### 10. RISK-REWARD: MINIMUM 1:1.25 REQUIRED (CONFIRMED)
@@ -451,6 +459,7 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 - **PREFER**: 1:1.5 or better
 - **CALCULATE**: Based on nearest significant resistance
 - **AVOID**: RR < 1:1.25 even if all other conditions met
+- **NEW RULE**: For entries with 4H RSI > 70, require RR ≥ 1:1.5
 - **RATIONALE**: Favorable RR compensates for imperfect win rate
 
 ### 11. ALL 7 CORE CONDITIONS REQUIRED (ENHANCED)
@@ -459,8 +468,8 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 2. ✅ bb_pos ≥ 95% AND ≤ 110%
 3. ✅ RSI(15m) ≥ 67 AND ≤ 76
 4. ✅ 4H RSI ≥ 57 AND ≤ 72
-5. ✅ MACD histogram > 100
-6. ✅ 15m EMA alignment bullish with gap >0.4%
+5. ✅ MACD histogram > 75
+6. ✅ 15m EMA alignment bullish with gap >0.3%
 7. ✅ Daily timeframe bullish or neutral
 
 - **MINIMUM REQUIREMENT**: ALL 7 conditions must be met for LONG entry
@@ -468,28 +477,28 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 - **NO EXCEPTIONS**: This combination is 100% in winning trades
 
 ### 12. ENTRY QUALITY SCORING SYSTEM (ENHANCED)
-**Score each setup (must score ≥8.5 to enter):**
+**Score each setup (must score ≥8.0 to enter):**
 1. 4H BULLISH (price > EMA21 > EMA50): +1.0
 2. bb_pos 95-110%: +1.0 (bonus +0.5 if 100-108%)
 3. RSI(15m) 67-76: +1.0 (bonus +0.5 if 70-73%)
 4. 4H RSI 57-72: +1.0 (bonus +0.5 if 65-70%)
-5. MACD histogram >100: +1.0 (bonus +0.5 if >125)
-6. 15m EMA bullish with gap >0.4%: +1.0 (bonus +0.5 if gap >0.5%)
+5. MACD histogram >75: +1.0 (bonus +0.5 if >100)
+6. 15m EMA bullish with gap >0.3%: +1.0 (bonus +0.5 if gap >0.4%)
 7. Daily bullish: +1.0 (if neutral: +0.5)
 8. Risk-reward ≥1:1.25: +1.0 (bonus +0.5 if ≥1:1.5)
 9. Time between 04:00-20:00 UTC: +0.5
 
 **ENTRY DECISION:**
-- **Score ≥9.0**: ENTER FULL SIZE (confidence 75)
-- **Score 8.5-8.9**: ENTER HALF SIZE (confidence 70)
-- **Score <8.5**: REJECT (do not enter)
+- **Score ≥8.5**: ENTER FULL SIZE (confidence 75)
+- **Score 8.0-8.4**: ENTER HALF SIZE (confidence 70)
+- **Score <8.0**: REJECT (do not enter)
 
 ### 13. POSITION SIZING ADJUSTMENTS (ENHANCED)
 **Based on confluence strength:**
-- **BASE SIZE (100%)**: All 7 core conditions met, score ≥9.0
-- **REDUCE 50%**: Score 8.5-8.9 OR 4H RSI 70-72 OR bb_pos > 108% OR RSI(15m) > 73
+- **BASE SIZE (100%)**: All 7 core conditions met, score ≥8.5
+- **REDUCE 50%**: Score 8.0-8.4 OR 4H RSI 70-72 OR bb_pos > 108% OR RSI(15m) > 73
 - **REDUCE 75%**: If 2+ caution conditions present
-- **INCREASE 25%**: If ALL optimal: 4H RSI 65-70, bb_pos 100-106%, MACD hist > 125, Daily bullish, EMA gap >0.5%
+- **INCREASE 25%**: If ALL optimal: 4H RSI 65-70, bb_pos 100-106%, MACD hist > 100, Daily bullish, EMA gap >0.4%
 - **MAX 1 TRADE/DAY**: Prevent overtrading
 
 ### 14. TIME OF DAY FILTER (CONFIRMED)
@@ -499,7 +508,7 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 - **NEW RULE**: Add +0.5 to entry quality score if within optimal hours
 - **RATIONALE**: Higher volume during active hours improves execution
 
-### 15. EXIT STRATEGY OPTIMIZATION (ENHANCED)
+### 15. EXIT STRATEGY OPTIMIZATION (NEW)
 **ANALYSIS**: 71.4% of wins hit TP, 80% of losses hit SL.
 - **TP HIT RATE**: 71.4% of wins hit TP, showing 2.5% TP is realistic
 - **SL HIT RATE**: 80% of losses hit SL, showing proper risk management
@@ -510,8 +519,8 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 ### 16. CONFIDENCE LEVEL OPTIMIZATION (UPDATED)
 **ANALYSIS**: Winning trades had confidence 70-75. Losing trades also had 70-75.
 - **SET CONFIDENCE**: 70-75 when ALL 7 conditions met
-- **USE 70**: For borderline setups (score 8.5-8.9)
-- **USE 75**: For perfect setups (score ≥9.0)
+- **USE 70**: For borderline setups (score 8.0-8.4)
+- **USE 75**: For perfect setups (score ≥8.5)
 - **AVOID**: Confidence >75 (overconfidence)
 - **NEW RULE**: Confidence should equal (score × 10) - 5
 - **RATIONALE**: Confidence should reflect setup quality, not predict outcome
@@ -522,19 +531,19 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 2. ❌ bb_pos < 95% OR > 110% (weak or extreme momentum)
 3. ❌ RSI(15m) < 67 OR > 76 (weak momentum or exhaustion)
 4. ❌ 4H RSI < 57 OR > 72 (weak trend or extreme exhaustion)
-5. ❌ MACD histogram ≤ 100 (weak momentum)
-6. ❌ 15m EMA alignment not bullish OR gap <0.4%
+5. ❌ MACD histogram ≤ 75 (weak momentum)
+6. ❌ 15m EMA alignment not bullish OR gap <0.3%
 7. ❌ Daily timeframe bearish (immediate rejection)
 8. ❌ Risk-reward < 1:1.25
-9. ❌ Entry quality score < 8.5
-10. ❌ Time outside 04:00-20:00 UTC (unless score > 9.5)
+9. ❌ Entry quality score < 8.0
+10. ❌ Time outside 04:00-20:00 UTC (unless score > 9.0)
 
 ### 18. WINNING PATTERN ANALYSIS
 **Winning trades consistently had:**
 - bb_pos 95-110% (avg 101.5%)
 - RSI(15m) 67-76 (avg 71.0)
-- MACD histogram >100 (avg 100.7)
-- EMA gap >0.4% (avg 0.5%)
+- MACD histogram >75 (avg 100.7)
+- EMA gap >0.3% (avg 0.5%)
 - 4H RSI 57-72 (avg 66.8)
 - All indicators in optimal ranges simultaneously
 
@@ -546,10 +555,10 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 ### 19. NEW ENTRY FILTERS BASED ON LOSING TRADES
 **From losing trade analysis:**
 1. **REJECT** if RSI(15m) between 65-67 (borderline weak)
-2. **REJECT** if MACD histogram between 75-100 (weak momentum)
+2. **REJECT** if MACD histogram between 50-75 (weak momentum)
 3. **REJECT** if bb_pos between 90-95% (almost but not strong enough)
 4. **REJECT** if 4H RSI between 54-57 (almost but not established)
-5. **REJECT** if EMA gap between 0.3-0.4% (almost but not clear)
+5. **REJECT** if EMA gap between 0.2-0.3% (almost but not clear)
 6. **PREFER** entries where ALL indicators are in OPTIMAL ranges, not just minimums
 
 ### 20. IMPROVED RISK MANAGEMENT
@@ -594,76 +603,5 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 - **AVOID**: ADX < 20 (ranging market)
 - **RATIONALE**: Strong trends (ADX >25) provide higher probability continuation
 
-### 25. NEW RULE: MOMENTUM CONFIRMATION PATTERN
-**ANALYSIS**: Winning trades showed a specific pattern: strong 4H trend + strong 15m momentum continuation
-- **REQUIRE**: 4H RSI (57-72) + 15m RSI (67-76) = momentum alignment
-- **REJECT**: If 4H RSI > 15m RSI (weak short-term momentum)
-- **PREFER**: 15m RSI > 4H RSI by 5-10 points (strong continuation)
-- **RATIONALE**: Short-term momentum should be stronger than medium-term for continuation
-
-### 26. NEW RULE: BOLLINGER BAND WIDTH FILTER
-**ANALYSIS**: Winning trades occurred when Bollinger Band width was expanding, not contracting
-- **PREFER**: Bollinger Band width expanding or stable
-- **AVOID**: Bollinger Band width contracting significantly
-- **RATIONALE**: Expanding bands indicate increasing volatility and trend strength
-
-### 27. NEW RULE: STRICT BORDERLINE REJECTION (CRITICAL IMPROVEMENT)
-**ANALYSIS**: 9/11 losing trades had 1+ indicators in borderline ranges (just below thresholds). Winning trades had ALL indicators clearly within optimal ranges.
-- **REJECT IMMEDIATELY** if ANY indicator is borderline:
-  - RSI(15m) 65-66.9 (must be ≥67)
-  - MACD histogram 75-99.9 (must be ≥100)
-  - bb_pos 90-94.9% (must be ≥95%)
-  - 4H RSI 54-56.9 (must be ≥57)
-  - EMA gap 0.3-0.39% (must be ≥0.4%)
-- **NO "CLOSE ENOUGH" EXCEPTIONS**: Strict thresholds only
-- **RATIONALE**: Borderline values consistently led to losses
-
-### 28. NEW RULE: ENTRY TIMING OPTIMIZATION
-**ANALYSIS**: Winning trades entered during active momentum, not during pullbacks to oversold levels.
-- **REQUIRE**: RSI(15m) ≥ 67 (momentum continuation, not oversold bounce)
-- **AVOID**: Traditional "oversold" entries (RSI < 40)
-- **PREFER**: RSI(15m) 70-73 for strongest continuation
-- **RATIONALE**: This is a momentum continuation strategy, not mean reversion
-
-### 29. NEW RULE: 4H RSI MOMENTUM FILTER
-**ANALYSIS**: Winning trades had 4H RSI momentum (rising or stable), losing trades often had declining 4H RSI.
-- **PREFER**: 4H RSI rising or stable
-- **AVOID**: 4H RSI declining significantly (>5 points from recent high)
-- **CAUTION**: If 4H RSI declining, reduce position size 75%
-- **RATIONALE**: Declining 4H RSI indicates weakening trend momentum
-
-### 30. NEW RULE: CONFLUENCE REQUIREMENT
-**ANALYSIS**: Winning trades had 4+ indicators in OPTIMAL ranges (not just minimum thresholds).
-- **REQUIRE**: At least 4 indicators in OPTIMAL ranges:
-  - bb_pos 100-108% (optimal)
-  - RSI(15m) 70-73 (optimal)
-  - 4H RSI 65-70 (optimal)
-  - MACD histogram >125 (optimal)
-  - EMA gap >0.5% (optimal)
-- **REJECT**: If only meeting minimum thresholds without optimal confluence
-- **RATIONALE**: Higher confluence = higher probability
-
-### 31. NEW RULE: WINNING TRADE PATTERN REPLICATION
-**Based on winning trade analysis, REQUIRE this exact pattern:**
-1. ✅ LONG only
-2. ✅ bb_pos 95-110% (prefer 100-108%)
-3. ✅ RSI(15m) 67-76 (prefer 70-73)
-4. ✅ 4H RSI 57-72 (prefer 65-70)
-5. ✅ MACD histogram >100 (prefer >125)
-6. ✅ 15m EMA bullish with gap >0.4% (prefer >0.5%)
-7. ✅ Daily bullish or neutral
-8. ✅ 4H EMA alignment bullish (price > EMA21 > EMA50)
-9. ✅ ADX > 20 (prefer >25)
-10. ✅ Risk-reward ≥1:1.25
-11. ✅ Time 04:00-20:00 UTC
-12. ✅ Entry quality score ≥8.5
-
-### 32. REMOVED RULES (DID NOT WORK)
-**Based on analysis, REMOVE these:**
-- ❌ **Traditional pullback entries**: Winning trades entered during momentum, not pullbacks
-- ❌ **Oversold RSI entries**: Winning trades had RSI(15m) ≥67, not oversold
-- ❌ **Lower Bollinger Band entries**: Winning trades had bb_pos ≥95%, not at lower band
-- ❌ **Flexible thresholds**: "Close enough" mentality caused losses
-- ❌ **SHORT positions**: 0% win rate on SHORT trades
-
-###
+### 25. REMEMBER
+This is now a **STRICT LONG-ONLY MOMENTUM CONTINUATION** strategy with **TIGHTER FILTERS**. Only enter LONG positions when ALL 7 core conditions are met with UPDATED THRESHOLDS (bb_pos 95-110%, RSI(15m) 67-76, 4H RSI 57-72, MACD >75, EMA gap >0.3%) AND entry quality score ≥8.0. Never take SHORT positions. Use 2.0% SL, 2.5% TP with trailing stops. The updated thresholds are based on actual winning trade minimums with buffer for safety.

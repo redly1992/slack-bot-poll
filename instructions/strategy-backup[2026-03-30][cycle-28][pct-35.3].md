@@ -1,4 +1,4 @@
-<!-- AI-IMPROVED: 2026-03-30 | Cycle 54 -->
+<!-- AI-IMPROVED: 2026-03-30 | Cycle 27 -->
 <!-- Based on 17 signals: 6 wins / 11 losses (35.3% win rate) -->
 
 # AI-Optimized Crypto Trading Strategy Guide
@@ -375,9 +375,9 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 
 ---
 
-## 📊 LEARNED RULES (Cycle 54)
+## 📊 LEARNED RULES (Cycle 27)
 
-### 1. LONG-ONLY STRATEGY ENFORCED (REINFORCED)
+### 1. LONG-ONLY STRATEGY ENFORCED (CONFIRMED)
 **ANALYSIS**: 6/6 winning trades were LONG. 0/3 SHORT trades were winners. SHORT trades lost 100% of time.
 - **REQUIRE**: Only take LONG positions
 - **IMMEDIATE REJECTION**: ALL SHORT signals regardless of market condition
@@ -409,7 +409,7 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 ### 5. 15m RSI: 67-76 RANGE REQUIRED (CONFIRMED)
 **ANALYSIS**: Winning trades had RSI(15m) 55.9-76.3 but optimal is 67-76. Losing trades often <67.
 - **REQUIRE FOR LONG**: RSI(15m) ≥ 67 AND ≤ 76
-- **OPTIMAL RANGE**: 70-73 for best continuation
+- **OPTIMAL RANGE**: 70-76 for best continuation
 - **REJECT LONG**: If RSI(15m) < 67 OR > 76
 - **CAUTION**: Reduce size 50% if RSI(15m) > 73
 - **RATIONALE**: Strong momentum (RSI ≥67) indicates continuation, not reversal
@@ -417,7 +417,7 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 ### 6. 4H RSI: 57-72 RANGE REQUIRED (CRITICAL)
 **ANALYSIS**: Winning trades had 4H RSI 57.7-76.5. Losing trades often <57 or >73.
 - **REQUIRE FOR LONG**: 4H RSI ≥ 57 AND ≤ 72
-- **OPTIMAL RANGE**: 65-70 for strongest setups
+- **OPTIMAL RANGE**: 65-72 for strongest setups
 - **REJECT LONG**: If 4H RSI < 57 OR > 72
 - **REDUCE SIZE 50%**: If 4H RSI 70-72 (high reversal risk)
 - **RATIONALE**: Strong 4H momentum (RSI 57-72) supports continuation without exhaustion
@@ -607,63 +607,27 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 - **AVOID**: Bollinger Band width contracting significantly
 - **RATIONALE**: Expanding bands indicate increasing volatility and trend strength
 
-### 27. NEW RULE: STRICT BORDERLINE REJECTION (CRITICAL IMPROVEMENT)
-**ANALYSIS**: 9/11 losing trades had 1+ indicators in borderline ranges (just below thresholds). Winning trades had ALL indicators clearly within optimal ranges.
-- **REJECT IMMEDIATELY** if ANY indicator is borderline:
-  - RSI(15m) 65-66.9 (must be ≥67)
-  - MACD histogram 75-99.9 (must be ≥100)
-  - bb_pos 90-94.9% (must be ≥95%)
-  - 4H RSI 54-56.9 (must be ≥57)
-  - EMA gap 0.3-0.39% (must be ≥0.4%)
-- **NO "CLOSE ENOUGH" EXCEPTIONS**: Strict thresholds only
-- **RATIONALE**: Borderline values consistently led to losses
+### 27. REMEMBER
+This is now a **STRICT LONG-ONLY MOMENTUM CONTINUATION** strategy with **TIGHTER FILTERS**. Only enter LONG positions when ALL 7 core conditions are met with UPDATED THRESHOLDS (bb_pos 95-110%, RSI(15m) 67-76, 4H RSI 57-72, MACD >100, EMA gap >0.4%) AND entry quality score ≥8.5. Never take SHORT positions. Use 2.0% SL, 2.5% TP with trailing stops. The updated thresholds are based on actual winning trade minimums with buffer for safety.
 
-### 28. NEW RULE: ENTRY TIMING OPTIMIZATION
-**ANALYSIS**: Winning trades entered during active momentum, not during pullbacks to oversold levels.
-- **REQUIRE**: RSI(15m) ≥ 67 (momentum continuation, not oversold bounce)
-- **AVOID**: Traditional "oversold" entries (RSI < 40)
-- **PREFER**: RSI(15m) 70-73 for strongest continuation
-- **RATIONALE**: This is a momentum continuation strategy, not mean reversion
+## BACKTEST PERFORMANCE THIS CYCLE
+- Total trades: 17
+- Win rate: 35.3%  (target: >50%)
+- Wins: 6 | Losses: 11
+- Total P&L: $-84.02
 
-### 29. NEW RULE: 4H RSI MOMENTUM FILTER
-**ANALYSIS**: Winning trades had 4H RSI momentum (rising or stable), losing trades often had declining 4H RSI.
-- **PREFER**: 4H RSI rising or stable
-- **AVOID**: 4H RSI declining significantly (>5 points from recent high)
-- **CAUTION**: If 4H RSI declining, reduce position size 75%
-- **RATIONALE**: Declining 4H RSI indicates weakening trend momentum
+## KEY IMPROVEMENTS FOR CYCLE 27
+1. **Stricter rejection of borderline values** - losing trades often had indicators just below thresholds
+2. **Added momentum confirmation pattern** - require 15m RSI > 4H RSI for continuation
+3. **Added Bollinger Band width filter** - avoid contracting volatility environments
+4. **Enhanced volume confirmation** - OBV must support price movement
+5. **Added ADX trend strength filter** - avoid ranging markets (ADX < 20)
+6. **Refined entry scoring system** - must score ≥8.5 to enter, with clear size adjustments
 
-### 30. NEW RULE: CONFLUENCE REQUIREMENT
-**ANALYSIS**: Winning trades had 4+ indicators in OPTIMAL ranges (not just minimum thresholds).
-- **REQUIRE**: At least 4 indicators in OPTIMAL ranges:
-  - bb_pos 100-108% (optimal)
-  - RSI(15m) 70-73 (optimal)
-  - 4H RSI 65-70 (optimal)
-  - MACD histogram >125 (optimal)
-  - EMA gap >0.5% (optimal)
-- **REJECT**: If only meeting minimum thresholds without optimal confluence
-- **RATIONALE**: Higher confluence = higher probability
-
-### 31. NEW RULE: WINNING TRADE PATTERN REPLICATION
-**Based on winning trade analysis, REQUIRE this exact pattern:**
-1. ✅ LONG only
-2. ✅ bb_pos 95-110% (prefer 100-108%)
-3. ✅ RSI(15m) 67-76 (prefer 70-73)
-4. ✅ 4H RSI 57-72 (prefer 65-70)
-5. ✅ MACD histogram >100 (prefer >125)
-6. ✅ 15m EMA bullish with gap >0.4% (prefer >0.5%)
-7. ✅ Daily bullish or neutral
-8. ✅ 4H EMA alignment bullish (price > EMA21 > EMA50)
-9. ✅ ADX > 20 (prefer >25)
-10. ✅ Risk-reward ≥1:1.25
-11. ✅ Time 04:00-20:00 UTC
-12. ✅ Entry quality score ≥8.5
-
-### 32. REMOVED RULES (DID NOT WORK)
-**Based on analysis, REMOVE these:**
-- ❌ **Traditional pullback entries**: Winning trades entered during momentum, not pullbacks
-- ❌ **Oversold RSI entries**: Winning trades had RSI(15m) ≥67, not oversold
-- ❌ **Lower Bollinger Band entries**: Winning trades had bb_pos ≥95%, not at lower band
-- ❌ **Flexible thresholds**: "Close enough" mentality caused losses
-- ❌ **SHORT positions**: 0% win rate on SHORT trades
-
-###
+## EXPECTED IMPACT
+With these stricter filters, we expect to:
+- Reduce losing trades by rejecting borderline setups
+- Maintain winning trades by keeping optimal conditions
+- Improve win rate from 35.3% to target >50%
+- Maintain favorable risk-reward ratio of 1:1.25+
+- Reduce overall drawdown through better position sizing

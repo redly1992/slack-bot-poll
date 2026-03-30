@@ -1,4 +1,4 @@
-<!-- AI-IMPROVED: 2026-03-30 | Cycle 54 -->
+<!-- AI-IMPROVED: 2026-03-30 | Cycle 31 -->
 <!-- Based on 17 signals: 6 wins / 11 losses (35.3% win rate) -->
 
 # AI-Optimized Crypto Trading Strategy Guide
@@ -375,9 +375,9 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 
 ---
 
-## 📊 LEARNED RULES (Cycle 54)
+## 📊 LEARNED RULES (Cycle 31)
 
-### 1. LONG-ONLY STRATEGY ENFORCED (REINFORCED)
+### 1. LONG-ONLY STRATEGY ENFORCED (CONFIRMED)
 **ANALYSIS**: 6/6 winning trades were LONG. 0/3 SHORT trades were winners. SHORT trades lost 100% of time.
 - **REQUIRE**: Only take LONG positions
 - **IMMEDIATE REJECTION**: ALL SHORT signals regardless of market condition
@@ -409,7 +409,7 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 ### 5. 15m RSI: 67-76 RANGE REQUIRED (CONFIRMED)
 **ANALYSIS**: Winning trades had RSI(15m) 55.9-76.3 but optimal is 67-76. Losing trades often <67.
 - **REQUIRE FOR LONG**: RSI(15m) ≥ 67 AND ≤ 76
-- **OPTIMAL RANGE**: 70-73 for best continuation
+- **OPTIMAL RANGE**: 70-76 for best continuation
 - **REJECT LONG**: If RSI(15m) < 67 OR > 76
 - **CAUTION**: Reduce size 50% if RSI(15m) > 73
 - **RATIONALE**: Strong momentum (RSI ≥67) indicates continuation, not reversal
@@ -417,7 +417,7 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 ### 6. 4H RSI: 57-72 RANGE REQUIRED (CRITICAL)
 **ANALYSIS**: Winning trades had 4H RSI 57.7-76.5. Losing trades often <57 or >73.
 - **REQUIRE FOR LONG**: 4H RSI ≥ 57 AND ≤ 72
-- **OPTIMAL RANGE**: 65-70 for strongest setups
+- **OPTIMAL RANGE**: 65-72 for strongest setups
 - **REJECT LONG**: If 4H RSI < 57 OR > 72
 - **REDUCE SIZE 50%**: If 4H RSI 70-72 (high reversal risk)
 - **RATIONALE**: Strong 4H momentum (RSI 57-72) supports continuation without exhaustion

@@ -1,4 +1,4 @@
-<!-- AI-IMPROVED: 2026-03-30 | Cycle 54 -->
+<!-- AI-IMPROVED: 2026-03-30 | Cycle 41 -->
 <!-- Based on 17 signals: 6 wins / 11 losses (35.3% win rate) -->
 
 # AI-Optimized Crypto Trading Strategy Guide
@@ -375,9 +375,9 @@ If NO → Entry quality is MEDIUM (still SHORT, but lower confidence)
 
 ---
 
-## 📊 LEARNED RULES (Cycle 54)
+## 📊 LEARNED RULES (Cycle 41)
 
-### 1. LONG-ONLY STRATEGY ENFORCED (REINFORCED)
+### 1. LONG-ONLY STRATEGY ENFORCED (CONFIRMED)
 **ANALYSIS**: 6/6 winning trades were LONG. 0/3 SHORT trades were winners. SHORT trades lost 100% of time.
 - **REQUIRE**: Only take LONG positions
 - **IMMEDIATE REJECTION**: ALL SHORT signals regardless of market condition
