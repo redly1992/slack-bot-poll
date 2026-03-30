@@ -289,19 +289,23 @@ Analyze the results and return improved parameters. Apply these rules:
 1. **scoreThreshold**: Increase by 1 if setup win rate < 45% AND total > 5 trades.
    Decrease by 1 (min 3) if setup win rate > 65% AND total < 10 trades (too few signals).
 
-2. **enabled**: Set to false if setup win rate < 40% AND total > 5 trades.
-   Set back to true if was disabled and overall win rate improved.
+2. **enabled**: Set to false ONLY if setup win rate < 30% AND total > 8 trades.
+   IMPORTANT: At least 2 of the 3 setups MUST remain enabled at all times.
 
-3. **adxTrendMinimum**: If ADX-low bucket (<25) win rate < 40%, increase by 2.
-   If ADX-high bucket (>35) has best win rate, keep or decrease slightly.
+3. **adxTrendMinimum**: Maximum value is 25. Do NOT increase above 25 — it produces zero signals.
+   If ADX-low bucket (<25) win rate < 40%, increase by 1 (not 2). Keep at or below 25.
 
-4. **RSI ranges (setupA)**: Narrow the rsiLong/rsiShort range by 2 on each side
-   if win rate is below 50%. Widen by 2 if win rate is above 60% but signal count is low.
+4. **RSI ranges (setupA)**: RSI long range must be at least 12 wide (max-min >= 12).
+   Keep rsiLong.min between 20-45, rsiLong.max between 35-60.
+   Keep rsiShort.min between 40-65, rsiShort.max between 55-80.
 
 5. **riskManagement slAtr/tpAtr**: If SL hits > 60% of exits, increase slAtr by 0.2.
    If TP hits < 20% of exits, decrease tpAtr by 0.3.
 
-6. **cooldownCandles**: Increase by 4 if total signals > 200 (too frequent).
+6. **cooldownCandles**: Keep between 12 and 32. Increase by 4 if total signals > 200 (too frequent).
+
+CRITICAL: Your response must produce a strategy that generates AT LEAST 5-10 signals over 90 days.
+Do not over-optimize into zero signals.
 
 ## RESPONSE
 Return ONLY valid JSON. No markdown, no code blocks, no explanations.
@@ -350,6 +354,56 @@ Only change values that the data supports. Preserve all keys.`;
     return parsed;
   }
 
+  // ── Hard constraints applied to AI params to prevent self-destruction ────
+  enforceSafetyConstraints(params, currentParams) {
+    const p = JSON.parse(JSON.stringify(params)); // deep clone
+
+    // 1. ADX minimum: cap at 25 — higher than this produces near-zero signals
+    if (p.marketRegime.adxTrendMinimum > 25) {
+      console.log(`  ⚠️  ADX capped 25 (AI wanted ${p.marketRegime.adxTrendMinimum})`);
+      p.marketRegime.adxTrendMinimum = 25;
+    }
+
+    // 2. At least 2 setups must remain enabled
+    const enabledCount = [p.setupA.enabled, p.setupB.enabled, p.setupC.enabled].filter(Boolean).length;
+    if (enabledCount < 2) {
+      console.log(`  ⚠️  AI disabled too many setups (${3 - enabledCount} disabled) — re-enabling setupB`);
+      p.setupB.enabled = true;
+    }
+
+    // 3. scoreThreshold limits per setup
+    const maxThreshold = { A: 6, B: 6, C: 7 };
+    const minThreshold = { A: 3, B: 3, C: 3 };
+    for (const [key, setup] of [['setupA', p.setupA], ['setupB', p.setupB], ['setupC', p.setupC]]) {
+      const label = key.slice(-1);
+      if (setup.scoreThreshold > maxThreshold[label]) {
+        console.log(`  ⚠️  ${key}.scoreThreshold capped at ${maxThreshold[label]} (AI wanted ${setup.scoreThreshold})`);
+        setup.scoreThreshold = maxThreshold[label];
+      }
+      if (setup.scoreThreshold < minThreshold[label]) {
+        setup.scoreThreshold = minThreshold[label];
+      }
+    }
+
+    // 4. RSI long range must be at least 12 wide and within [20, 60]
+    if (p.setupA.rsiLong) {
+      p.setupA.rsiLong.min = Math.max(20, Math.min(p.setupA.rsiLong.min, 45));
+      p.setupA.rsiLong.max = Math.max(p.setupA.rsiLong.min + 12, Math.min(p.setupA.rsiLong.max, 60));
+    }
+    if (p.setupA.rsiShort) {
+      p.setupA.rsiShort.max = Math.min(80, Math.max(p.setupA.rsiShort.max, 55));
+      p.setupA.rsiShort.min = Math.min(p.setupA.rsiShort.max - 12, Math.max(p.setupA.rsiShort.min, 40));
+    }
+
+    // 5. cooldownCandles max 32 (prevents too-sparse signals)
+    if (p.filters.cooldownCandles > 32) {
+      console.log(`  ⚠️  cooldownCandles capped at 32 (AI wanted ${p.filters.cooldownCandles})`);
+      p.filters.cooldownCandles = 32;
+    }
+
+    return p;
+  }
+
   // ── Backup & save params ──────────────────────────────────────────────────
 
   backupCurrentParams(currentParams, winRate) {
@@ -361,6 +415,28 @@ Only change values that the data supports. Preserve all keys.`;
     const filepath = path.join('instructions', filename);
     fs.writeFileSync(filepath, JSON.stringify(currentParams, null, 2));
     console.log(`💾 Backed up params → ${filepath}`);
+  }
+
+  // Find the most recent backup with >= 5 signals (i.e., a non-zero pct)
+  findLastGoodBackup() {
+    const dir = 'instructions';
+    const files = fs.readdirSync(dir)
+      .filter(f => f.startsWith('strategy-v2-params-backup') && f.endsWith('.json'))
+      .sort()
+      .reverse(); // most recent first
+
+    for (const file of files) {
+      const match = file.match(/pct([\d.]+)\.json$/);
+      if (!match) continue;
+      const pct = parseFloat(match[1]);
+      if (pct > 0) {
+        try {
+          const params = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8'));
+          return { file, winRate: pct, params };
+        } catch (_) {}
+      }
+    }
+    return null;
   }
 
   _readState() {
@@ -382,20 +458,34 @@ Only change values that the data supports. Preserve all keys.`;
     await this.ensureColumns();
     await this.calculatePnL();
 
-    // 2. Load graded trades
-    const signals = await this.dbAll(
+    // 2. Load current params + ALWAYS backup immediately (before anything else)
+    const currentParams = JSON.parse(fs.readFileSync(PARAMS_PATH, 'utf-8'));
+    const allSignals = await this.dbAll(
       'SELECT * FROM backtest_signals_v2 WHERE result IS NOT NULL ORDER BY timestamp'
     );
-    console.log(`\n📊 ${signals.length} graded trade(s) available`);
+    const winRate = allSignals.length > 0
+      ? (allSignals.filter(s => s.result === 'WIN').length / allSignals.length * 100)
+      : 0;
+    this.backupCurrentParams(currentParams, winRate);
 
-    if (signals.length < 10) {
-      console.log('⚠️  Too few graded trades (<10) for meaningful AI analysis. Skipping.');
+    console.log(`\n📊 ${allSignals.length} graded trade(s) available`);
+
+    // 3. If too few signals, the current params are over-constrained → reset to last good backup
+    if (allSignals.length < 5) {
+      console.log('⚠️  Very few signals (<5) — params may be too restrictive.');
+      const lastGood = this.findLastGoodBackup();
+      if (lastGood) {
+        console.log(`🔄 Resetting params to last good backup: ${lastGood.file} (${lastGood.winRate}% win rate)`);
+        fs.writeFileSync(PARAMS_PATH, JSON.stringify(lastGood.params, null, 2));
+      } else {
+        console.log('ℹ️  No good backup found — keeping current params');
+      }
       await this.closeDB();
       return;
     }
 
-    // 3. Build analysis
-    const analysis = this.buildAnalysis(signals);
+    // 4. Build analysis
+    const analysis = this.buildAnalysis(allSignals);
     console.log(`\n📈 ANALYSIS SUMMARY:`);
     console.log(`  Win Rate:   ${analysis.overall.winRate}%  (${analysis.overall.wins}W / ${analysis.overall.losses}L)`);
     console.log(`  Total P&L:  $${analysis.overall.totalPnlUsd >= 0 ? '+' : ''}${analysis.overall.totalPnlUsd}`);
@@ -408,10 +498,7 @@ Only change values that the data supports. Preserve all keys.`;
     console.log(`  ADX 25-35:  ${analysis.byAdxRange.mid.winRate}% (${analysis.byAdxRange.mid.total} trades)`);
     console.log(`  ADX >35:    ${analysis.byAdxRange.high.winRate}% (${analysis.byAdxRange.high.total} trades)`);
 
-    // 4. Load current params
-    const currentParams = JSON.parse(fs.readFileSync(PARAMS_PATH, 'utf-8'));
-
-    // 5. Call AI
+    // 5. Call AI (currentParams already loaded in step 2)
     console.log('\n🤖 Calling DeepSeek AI for parameter optimization...');
     let newParams = null;
     try {
@@ -427,8 +514,9 @@ Only change values that the data supports. Preserve all keys.`;
       return;
     }
 
-    // 6. Backup old params
-    this.backupCurrentParams(currentParams, analysis.overall.winRate);
+    // 6. Apply safety constraints (prevents AI from disabling all setups / over-tightening)
+    console.log('\n🛡️  Applying safety constraints...');
+    newParams = this.enforceSafetyConstraints(newParams, currentParams);
 
     // 7. Annotate and write new params
     newParams.version          = currentParams.version || 2;
