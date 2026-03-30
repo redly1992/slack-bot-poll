@@ -50,24 +50,16 @@ class TradingStrategyV2 {
       return { regime: 'RANGING', adx: adxVal || 0, emaDir: 'NEUTRAL' };
     }
 
-    const ema200Trend = ind4h.ema200?.trend; // 'BULLISH' | 'BEARISH' | undefined
-    const emaBull = emaFast > emaSlow;
-    const emaBear = emaFast < emaSlow;
-
-    if (emaBull) {
-      // EMA direction matches EMA200 (or EMA200 not available) → confirmed BULL
-      if (!ema200Trend || ema200Trend === 'BULLISH') {
-        return { regime: 'BULL', adx: adxVal || 0, emaDir: 'BULLISH' };
-      }
-      // EMA bullish but EMA200 bearish → transitional, skip
-      return { regime: 'RANGING', adx: adxVal || 0, emaDir: 'CONFLICT' };
+    // Use 4H EMA9/21 crossover as the primary direction signal.
+    // EMA200 is used as a soft context note in the AI prompt but NOT as a hard gate —
+    // hard-gating on EMA200 conflict kills signals in transitional markets (e.g. 2025 BTC).
+    if (emaFast > emaSlow) {
+      return { regime: 'BULL', adx: adxVal || 0, emaDir: 'BULLISH',
+               ema200Trend: ind4h.ema200?.trend || null };
     }
-
-    if (emaBear) {
-      if (!ema200Trend || ema200Trend === 'BEARISH') {
-        return { regime: 'BEAR', adx: adxVal || 0, emaDir: 'BEARISH' };
-      }
-      return { regime: 'RANGING', adx: adxVal || 0, emaDir: 'CONFLICT' };
+    if (emaFast < emaSlow) {
+      return { regime: 'BEAR', adx: adxVal || 0, emaDir: 'BEARISH',
+               ema200Trend: ind4h.ema200?.trend || null };
     }
 
     return { regime: 'RANGING', adx: adxVal || 0, emaDir: 'NEUTRAL' };
