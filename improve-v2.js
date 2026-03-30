@@ -267,50 +267,56 @@ class ImproveV2 {
 
   // ── AI parameter optimization ─────────────────────────────────────────────
 
-  async callAI(analysis, currentParams) {
+  _buildAIPrompt(analysis, paramsToImprove, regressionContext = null) {
+    let prompt = `You are a quantitative trading strategy optimizer for a cryptocurrency bot.\n\n`;
+
+    if (regressionContext) {
+      prompt += `## ⚠️ REGRESSION ALERT — PREVIOUS ATTEMPT FAILED\n`;
+      prompt += `The last parameter change caused a WIN RATE REGRESSION:\n`;
+      prompt += `  Previous best: ${regressionContext.bestWinRate.toFixed(1)}%\n`;
+      prompt += `  After change:  ${regressionContext.currentWinRate.toFixed(1)}%\n`;
+      prompt += `  Drop:         -${(regressionContext.bestWinRate - regressionContext.currentWinRate).toFixed(1)}%\n\n`;
+      prompt += `The FAILED parameters that caused the regression:\n`;
+      prompt += `${JSON.stringify(regressionContext.failedParams, null, 2)}\n\n`;
+      prompt += `You MUST start from the BEST KNOWN PARAMETERS below (not the failed ones).\n`;
+      prompt += `Make DIFFERENT adjustments than last time. The previous change was wrong.\n\n`;
+    }
+
+    prompt += `## BACKTEST RESULTS ANALYSIS\n`;
+    prompt += `${JSON.stringify(analysis, null, 2)}\n\n`;
+    prompt += `## ${regressionContext ? 'BEST KNOWN PARAMETERS (restore from these)' : 'CURRENT STRATEGY PARAMETERS'}\n`;
+    prompt += `${JSON.stringify(paramsToImprove, null, 2)}\n\n`;
+    prompt += `## YOUR OPTIMIZATION TASK\n`;
+    prompt += `Analyze the results and return improved parameters. Apply these rules:\n\n`;
+    prompt += `1. **scoreThreshold**: Increase by 1 if setup win rate < 45% AND total > 5 trades.\n`;
+    prompt += `   Decrease by 1 (min 3) if setup win rate > 65% AND total < 10 trades (too few signals).\n\n`;
+    prompt += `2. **enabled**: Set to false ONLY if setup win rate < 30% AND total > 8 trades.\n`;
+    prompt += `   IMPORTANT: At least 2 of the 3 setups MUST remain enabled at all times.\n\n`;
+    prompt += `3. **adxTrendMinimum**: Maximum value is 25. Do NOT increase above 25 — it produces zero signals.\n`;
+    prompt += `   If ADX-low bucket (<25) win rate < 40%, increase by 1. Keep at or below 25.\n\n`;
+    prompt += `4. **RSI ranges (setupA)**: RSI long range must be at least 12 wide (max-min >= 12).\n`;
+    prompt += `   Keep rsiLong.min between 20-45, rsiLong.max between 35-60.\n`;
+    prompt += `   Keep rsiShort.min between 40-65, rsiShort.max between 55-80.\n\n`;
+    prompt += `5. **riskManagement slAtr/tpAtr**: If SL hits > 60% of exits, increase slAtr by 0.2.\n`;
+    prompt += `   If TP hits < 20% of exits, decrease tpAtr by 0.3.\n\n`;
+    prompt += `6. **cooldownCandles**: Keep between 12 and 32. Increase by 4 if total signals > 200.\n\n`;
+    prompt += `CRITICAL: Your response must produce a strategy generating AT LEAST 5-10 signals over 1 year.\n`;
+    prompt += `Do not over-optimize into zero signals.\n\n`;
+    prompt += `## RESPONSE\n`;
+    prompt += `Return ONLY valid JSON. No markdown, no code blocks, no explanations.\n`;
+    prompt += `The JSON must match the EXACT schema of the parameters (same keys, same nesting).\n`;
+    prompt += `Only change values that the data supports. Preserve all keys.`;
+    return prompt;
+  }
+
+  async callAI(analysis, paramsToImprove, regressionContext = null) {
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey || apiKey.includes('your_')) {
       throw new Error('DEEPSEEK_API_KEY not configured in .env');
     }
 
     const client = new OpenAI({ apiKey, baseURL: 'https://api.deepseek.com' });
-
-    const prompt = `You are a quantitative trading strategy optimizer for a cryptocurrency bot.
-
-## BACKTEST RESULTS ANALYSIS
-${JSON.stringify(analysis, null, 2)}
-
-## CURRENT STRATEGY PARAMETERS
-${JSON.stringify(currentParams, null, 2)}
-
-## YOUR OPTIMIZATION TASK
-Analyze the results and return improved parameters. Apply these rules:
-
-1. **scoreThreshold**: Increase by 1 if setup win rate < 45% AND total > 5 trades.
-   Decrease by 1 (min 3) if setup win rate > 65% AND total < 10 trades (too few signals).
-
-2. **enabled**: Set to false ONLY if setup win rate < 30% AND total > 8 trades.
-   IMPORTANT: At least 2 of the 3 setups MUST remain enabled at all times.
-
-3. **adxTrendMinimum**: Maximum value is 25. Do NOT increase above 25 — it produces zero signals.
-   If ADX-low bucket (<25) win rate < 40%, increase by 1 (not 2). Keep at or below 25.
-
-4. **RSI ranges (setupA)**: RSI long range must be at least 12 wide (max-min >= 12).
-   Keep rsiLong.min between 20-45, rsiLong.max between 35-60.
-   Keep rsiShort.min between 40-65, rsiShort.max between 55-80.
-
-5. **riskManagement slAtr/tpAtr**: If SL hits > 60% of exits, increase slAtr by 0.2.
-   If TP hits < 20% of exits, decrease tpAtr by 0.3.
-
-6. **cooldownCandles**: Keep between 12 and 32. Increase by 4 if total signals > 200 (too frequent).
-
-CRITICAL: Your response must produce a strategy that generates AT LEAST 5-10 signals over 90 days.
-Do not over-optimize into zero signals.
-
-## RESPONSE
-Return ONLY valid JSON. No markdown, no code blocks, no explanations.
-The JSON must match the EXACT schema of the current parameters (same keys, same nesting).
-Only change values that the data supports. Preserve all keys.`;
+    const prompt = this._buildAIPrompt(analysis, paramsToImprove, regressionContext);
 
     const response = await client.chat.completions.create({
       model:    process.env.DEEPSEEK_MODEL || 'deepseek-chat',
@@ -415,6 +421,28 @@ Only change values that the data supports. Preserve all keys.`;
     const filepath = path.join('instructions', filename);
     fs.writeFileSync(filepath, JSON.stringify(currentParams, null, 2));
     console.log(`💾 Backed up params → ${filepath}`);
+    return filename;  // returned so caller can track best backup file
+  }
+
+  // Find the backup with the HIGHEST win rate (best ever achieved)
+  findBestBackup() {
+    const dir = 'instructions';
+    const files = fs.readdirSync(dir)
+      .filter(f => f.startsWith('strategy-v2-params-backup') && f.endsWith('.json'));
+
+    let best = null;
+    for (const file of files) {
+      const match = file.match(/pct([\d.]+)\.json$/);
+      if (!match) continue;
+      const pct = parseFloat(match[1]);
+      if (pct > 0 && (!best || pct > best.winRate)) {
+        try {
+          const params = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8'));
+          best = { file, winRate: pct, params };
+        } catch (_) {}
+      }
+    }
+    return best;
   }
 
   // Find the most recent backup with >= 5 signals (i.e., a non-zero pct)
@@ -443,7 +471,16 @@ Only change values that the data supports. Preserve all keys.`;
     try {
       if (fs.existsSync(STATE_FILE)) return JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
     } catch (_) {}
-    return { cycleNumber: 1 };
+    return { cycleNumber: 1, bestWinRate: 0, bestParamsFile: null };
+  }
+
+  _updateBestWinRate(winRate, backupFile) {
+    try {
+      const state = this._readState();
+      state.bestWinRate   = winRate;
+      state.bestParamsFile = backupFile;
+      fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+    } catch (_) {}
   }
 
   // ── Main ──────────────────────────────────────────────────────────────────
@@ -458,35 +495,70 @@ Only change values that the data supports. Preserve all keys.`;
     await this.ensureColumns();
     await this.calculatePnL();
 
-    // 2. Load current params + ALWAYS backup immediately (before anything else)
+    // 2. Load current params + compute win rate from this cycle's results
     const currentParams = JSON.parse(fs.readFileSync(PARAMS_PATH, 'utf-8'));
     const allSignals = await this.dbAll(
       'SELECT * FROM backtest_signals_v2 WHERE result IS NOT NULL ORDER BY timestamp'
     );
-    const winRate = allSignals.length > 0
+    const currentWinRate = allSignals.length > 0
       ? (allSignals.filter(s => s.result === 'WIN').length / allSignals.length * 100)
       : 0;
-    this.backupCurrentParams(currentParams, winRate);
 
-    console.log(`\n📊 ${allSignals.length} graded trade(s) available`);
+    // 3. ALWAYS backup the params that just ran (with its win rate)
+    const backupFile = this.backupCurrentParams(currentParams, currentWinRate);
+    console.log(`\n📊 ${allSignals.length} graded trade(s) | Win rate: ${currentWinRate.toFixed(1)}%`);
 
-    // 3. If too few signals, the current params are over-constrained → reset to last good backup
+    // 4. Handle too-few signals (over-constrained params)
     if (allSignals.length < 5) {
       console.log('⚠️  Very few signals (<5) — params may be too restrictive.');
-      const lastGood = this.findLastGoodBackup();
-      if (lastGood) {
-        console.log(`🔄 Resetting params to last good backup: ${lastGood.file} (${lastGood.winRate}% win rate)`);
-        fs.writeFileSync(PARAMS_PATH, JSON.stringify(lastGood.params, null, 2));
-      } else {
-        console.log('ℹ️  No good backup found — keeping current params');
+      const best = this.findBestBackup();
+      if (best) {
+        console.log(`🔄 Restoring best known params: ${best.file} (${best.winRate}%)`);
+        fs.writeFileSync(PARAMS_PATH, JSON.stringify(best.params, null, 2));
       }
       await this.closeDB();
       return;
     }
 
-    // 4. Build analysis
+    // 5. Compare against best win rate ever achieved
+    const state = this._readState();
+    const bestWinRate = state.bestWinRate || 0;
+    const isRegression = currentWinRate < bestWinRate;
+
+    if (isRegression) {
+      console.log(`\n📉 REGRESSION DETECTED: ${currentWinRate.toFixed(1)}% < best ${bestWinRate.toFixed(1)}%`);
+      console.log(`   Last change made things WORSE — reverting to best params for AI retry...`);
+    } else {
+      console.log(`\n📈 Win rate: ${currentWinRate.toFixed(1)}% ${bestWinRate > 0 ? `(best was ${bestWinRate.toFixed(1)}%)` : '(first baseline)'}`);
+      // Update the best tracker
+      this._updateBestWinRate(currentWinRate, backupFile);
+    }
+
+    // 6. Decide which params to give the AI:
+    //    - Regression: AI gets the BEST KNOWN params + failure context
+    //    - Improvement: AI gets the CURRENT (just-tested) params
+    let paramsForAI = currentParams;
+    let regressionContext = null;
+
+    if (isRegression) {
+      const best = this.findBestBackup();
+      if (best) {
+        paramsForAI = best.params;
+        regressionContext = {
+          bestWinRate,
+          currentWinRate,
+          failedParams: currentParams   // show AI what went wrong
+        };
+        console.log(`   AI will improve from: ${best.file} (${best.winRate}%)`);
+      } else {
+        // No backup found — just use current params without regression context
+        console.log('   No best backup found — proceeding with current params');
+      }
+    }
+
+    // 7. Build analysis + call AI
     const analysis = this.buildAnalysis(allSignals);
-    console.log(`\n📈 ANALYSIS SUMMARY:`);
+    console.log(`\n📊 ANALYSIS SUMMARY:`);
     console.log(`  Win Rate:   ${analysis.overall.winRate}%  (${analysis.overall.wins}W / ${analysis.overall.losses}L)`);
     console.log(`  Total P&L:  $${analysis.overall.totalPnlUsd >= 0 ? '+' : ''}${analysis.overall.totalPnlUsd}`);
     console.log(`  Setup A:    ${analysis.bySetup.A.winRate}% win rate (${analysis.bySetup.A.total} trades)`);
@@ -498,38 +570,47 @@ Only change values that the data supports. Preserve all keys.`;
     console.log(`  ADX 25-35:  ${analysis.byAdxRange.mid.winRate}% (${analysis.byAdxRange.mid.total} trades)`);
     console.log(`  ADX >35:    ${analysis.byAdxRange.high.winRate}% (${analysis.byAdxRange.high.total} trades)`);
 
-    // 5. Call AI (currentParams already loaded in step 2)
-    console.log('\n🤖 Calling DeepSeek AI for parameter optimization...');
+    const aiLabel = regressionContext ? '🔁 Re-asking AI (regression recovery)' : '🤖 Calling DeepSeek AI';
+    console.log(`\n${aiLabel}...`);
     let newParams = null;
     try {
-      const rawResponse = await this.callAI(analysis, currentParams);
-      newParams = this.parseAIResponse(rawResponse, currentParams);
+      const rawResponse = await this.callAI(analysis, paramsForAI, regressionContext);
+      newParams = this.parseAIResponse(rawResponse, paramsForAI);
     } catch (err) {
       console.warn(`⚠️  AI call failed: ${err.message}`);
     }
 
     if (!newParams) {
-      console.log('ℹ️  Keeping current params (AI response invalid or unavailable)');
+      console.log('ℹ️  Keeping params unchanged (AI unavailable or response invalid)');
+      if (isRegression && paramsForAI !== currentParams) {
+        // Still restore best params even if AI failed
+        fs.writeFileSync(PARAMS_PATH, JSON.stringify(paramsForAI, null, 2));
+        console.log('   Restored best known params as fallback.');
+      }
       await this.closeDB();
       return;
     }
 
-    // 6. Apply safety constraints (prevents AI from disabling all setups / over-tightening)
+    // 8. Safety constraints
     console.log('\n🛡️  Applying safety constraints...');
-    newParams = this.enforceSafetyConstraints(newParams, currentParams);
+    newParams = this.enforceSafetyConstraints(newParams, paramsForAI);
 
-    // 7. Annotate and write new params
-    newParams.version          = currentParams.version || 2;
-    newParams._lastImproved    = new Date().toISOString();
-    newParams._cycleNumber     = this._readState().cycleNumber || 1;
-    newParams._prevWinRate     = analysis.overall.winRate;
-    newParams._description     = currentParams.description || 'V2 Trading Strategy Parameters — auto-tuned by AI';
+    // 9. Annotate and write
+    newParams.version         = 2;
+    newParams._lastImproved   = new Date().toISOString();
+    newParams._cycleNumber    = this._readState().cycleNumber || 1;
+    newParams._prevWinRate    = currentWinRate;
+    newParams._bestWinRate    = Math.max(bestWinRate, currentWinRate);
+    newParams._wasRegression  = isRegression;
+    newParams._description    = 'V2 Trading Strategy Parameters — auto-tuned by AI';
 
     fs.writeFileSync(PARAMS_PATH, JSON.stringify(newParams, null, 2));
 
-    console.log(`\n✅ Improved params saved → ${PARAMS_PATH}`);
-    console.log(`   Previous win rate: ${analysis.overall.winRate}%`);
-    console.log(`   Changes take effect on next backtest cycle.\n`);
+    if (isRegression) {
+      console.log(`\n✅ New params saved (recovery attempt from ${bestWinRate.toFixed(1)}% baseline)`);
+    } else {
+      console.log(`\n✅ Improved params saved (${currentWinRate.toFixed(1)}% → next cycle)`);
+    }
 
     await this.closeDB();
   }

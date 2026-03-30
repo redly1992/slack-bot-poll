@@ -103,6 +103,21 @@ if (!state) {
   console.log(`  Cycles completed:   ${state.totalCyclesCompleted || 0}`);
   console.log(`  Current cycle:      #${state.cycleNumber || 1}`);
 
+  // Show best win rate ever achieved + regression indicator
+  const bestWR = state.bestWinRate || 0;
+  if (bestWR > 0) {
+    console.log(`  Best win rate ever: 🏆 ${bestWR.toFixed(1)}%`);
+    if (state.bestParamsFile) {
+      console.log(`  Best params from:   ${state.bestParamsFile}`);
+    }
+  }
+  const currentParams = readJSON(path.join('instructions', 'strategy-v2-params.json'));
+  if (currentParams?._wasRegression) {
+    console.log(`  Last cycle:         📉 REGRESSION — AI retrying from best`);
+  } else if (currentParams?._prevWinRate) {
+    console.log(`  Last cycle result:  ${currentParams._prevWinRate.toFixed(1)}%`);
+  }
+
   if (state.avgCycleDurationMs) {
     console.log(`  Avg cycle duration: ${fmtDuration(state.avgCycleDurationMs)}`);
     if (state.status === 'running' && state.cycleStartedAt) {
