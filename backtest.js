@@ -222,21 +222,23 @@ class BacktestEngine {
   }
   
   /**
-   * Determine signal from indicators
+   * Determine signal from indicators (strict thresholds to reduce noise)
    */
   determineSignal(indicators) {
     let buyScore = 0;
     let sellScore = 0;
     const reasons = [];
     
-    // RSI
-    if (indicators.rsi < 45) {
-      buyScore++;
-      reasons.push(`RSI oversold (${indicators.rsi.toFixed(1)})`);
-    }
-    if (indicators.rsi > 55) {
-      sellScore++;
-      reasons.push(`RSI overbought (${indicators.rsi.toFixed(1)})`);
+    // RSI — tight thresholds (not just neutral zone)
+    if (indicators.rsi !== undefined) {
+      if (indicators.rsi < 38) {          // genuinely oversold
+        buyScore++;
+        reasons.push(`RSI oversold (${indicators.rsi.toFixed(1)})`);
+      }
+      if (indicators.rsi > 62) {          // genuinely overbought
+        sellScore++;
+        reasons.push(`RSI overbought (${indicators.rsi.toFixed(1)})`);
+      }
     }
     
     // EMA
@@ -252,7 +254,7 @@ class BacktestEngine {
       reasons.push('EMA bearish');
     }
     
-    // MACD
+    // MACD — require meaningful histogram (not just > 0)
     const macd = indicators.macd?.histogram || 0;
     if (macd > 0) {
       buyScore++;
@@ -263,15 +265,14 @@ class BacktestEngine {
       reasons.push('MACD negative');
     }
     
-    // Stochastic
+    // Stochastic — tight thresholds
     const stochK = indicators.stochastic?.k || 50;
-    const stochD = indicators.stochastic?.d || 50;
     
-    if (stochK < 30) {
+    if (stochK < 25) {
       buyScore++;
       reasons.push('Stoch oversold');
     }
-    if (stochK > 70) {
+    if (stochK > 75) {
       sellScore++;
       reasons.push('Stoch overbought');
     }
@@ -281,18 +282,18 @@ class BacktestEngine {
     const bbLower = indicators.bollinger?.lower;
     const bbUpper = indicators.bollinger?.upper;
     
-    if (bbLower && price < bbLower * 1.005) {
+    if (bbLower && price < bbLower * 1.003) {
       buyScore++;
       reasons.push('Near BB lower');
     }
-    if (bbUpper && price > bbUpper * 0.995) {
+    if (bbUpper && price > bbUpper * 0.997) {
       sellScore++;
       reasons.push('Near BB upper');
     }
     
-    // Require at least 2 indicators agreeing (lowered from 3)
-    if (buyScore >= 2) return { signal: 'BUY', score: buyScore, reasons };
-    if (sellScore >= 2) return { signal: 'SELL', score: sellScore, reasons };
+    // Require at least 3 indicators agreeing (was 2 — too loose)
+    if (buyScore >= 3) return { signal: 'BUY', score: buyScore, reasons };
+    if (sellScore >= 3) return { signal: 'SELL', score: sellScore, reasons };
     return { signal: 'NEUTRAL', score: 0, reasons };
   }
   
@@ -496,9 +497,14 @@ class BacktestEngine {
       const sig15m = this.determineSignal(ind15m);
       const sig1h = this.determineSignal(ind1h);
       
-      // Check alignment (all timeframes agree)
-      const allBuy = sig5m.signal === 'BUY' && sig15m.signal === 'BUY' && sig1h.signal === 'BUY';
-      const allSell = sig5m.signal === 'SELL' && sig15m.signal === 'SELL' && sig1h.signal === 'SELL';
+      // 4H direction is the primary filter — lower TFs must agree WITH 4H
+      const h4Bullish = ind4h.ema?.fast > ind4h.ema?.slow;
+      const allBuy  = h4Bullish  && sig5m.signal === 'BUY'  && sig15m.signal === 'BUY'  && sig1h.signal === 'BUY';
+      const allSell = !h4Bullish && sig5m.signal === 'SELL' && sig15m.signal === 'SELL' && sig1h.signal === 'SELL';
+      
+      // Cooldown: skip if last signal was within 16 candles (4 hours on 15m chart)
+      const candlesSinceLastSignal = i - (this.lastSignalIndex || 0);
+      if ((allBuy || allSell) && candlesSinceLastSignal < 16) continue;
       
       if (allBuy || allSell) {
         this.stats.alignmentsDetected++;
@@ -537,6 +543,7 @@ class BacktestEngine {
             direction: aiAnalysis.signal,
             market_condition: ind4h.ema?.fast > ind4h.ema?.slow ? 'BULLISH' : 'BEARISH'
           });
+          this.lastSignalIndex = i; // track cooldown
           
           // Stats updated in recordSignal callback
         }

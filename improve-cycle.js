@@ -279,15 +279,18 @@ class AutoImprover {
         entry_reason:    t.ai_entry_reason,
         sl_reason:       t.ai_stop_loss_reason,
         indicators_15m: {
-          rsi:        ind.rsi?.toFixed ? ind.rsi.toFixed(1) : ind.rsi?.value?.toFixed(1),
+          rsi:        ind.rsi?.toFixed ? ind.rsi.toFixed(1) : null,
           macd_hist:  ind.macd?.histogram?.toFixed(4),
           ema_fast:   ind.ema?.fast?.toFixed(2),
           ema_slow:   ind.ema?.slow?.toFixed(2),
           ema_aligned: ind.ema?.fast > ind.ema?.slow ? 'bullish' : 'bearish',
-          bb_position: ind.bollingerBands?.position
+          // bb_pos: 0%=at lower band, 100%=at upper band
+          bb_pos: (ind.bollinger?.upper && ind.bollinger?.lower && ind.price)
+            ? (((ind.price - ind.bollinger.lower) / (ind.bollinger.upper - ind.bollinger.lower)) * 100).toFixed(1) + '%'
+            : null
         },
         indicators_4h: {
-          rsi:        ind4h.rsi?.toFixed ? ind4h.rsi.toFixed(1) : ind4h.rsi?.value?.toFixed(1),
+          rsi:        ind4h.rsi?.toFixed ? ind4h.rsi.toFixed(1) : null,
           ema_aligned: ind4h.ema?.fast > ind4h.ema?.slow ? 'bullish' : 'bearish',
           macd_hist:  ind4h.macd?.histogram?.toFixed(4)
         }
