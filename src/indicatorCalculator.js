@@ -1,4 +1,4 @@
-const { RSI, EMA, MACD, BollingerBands, Stochastic, ATR } = require('technicalindicators');
+const { RSI, EMA, SMA, MACD, BollingerBands, Stochastic, ATR, ADX, MFI, PSAR, OBV } = require('technicalindicators');
 
 class IndicatorCalculator {
   /**
@@ -129,6 +129,96 @@ class IndicatorCalculator {
   }
 
   /**
+   * Calculate ADX (Average Directional Index) — trend strength
+   * ADX > 25: trending market (trade)
+   * ADX < 20: choppy/ranging market (avoid)
+   * +DI > -DI: bullish trend | -DI > +DI: bearish trend
+   * Used by: Freqtrade, 3Commas, Jesse, TradingView strategies
+   */
+  static calculateADX(ohlcv, period = 14) {
+    if (ohlcv.length < period * 2) throw new Error(`Not enough data for ADX`);
+    const values = ADX.calculate({
+      high:   ohlcv.map(c => c.high),
+      low:    ohlcv.map(c => c.low),
+      close:  ohlcv.map(c => c.close),
+      period,
+    });
+    const cur = values[values.length - 1];
+    return { adx: cur.adx, pdi: cur.pdi, mdi: cur.mdi };
+  }
+
+  /**
+   * Calculate MFI (Money Flow Index) — volume-weighted RSI
+   * MFI < 20: oversold with volume confirmation → strong BUY
+   * MFI > 80: overbought with volume confirmation → strong SELL
+   * Used by: 3Commas QFL, many professional crypto bots
+   */
+  static calculateMFI(ohlcv, period = 14) {
+    if (ohlcv.length < period + 1) throw new Error(`Not enough data for MFI`);
+    const values = MFI.calculate({
+      high:   ohlcv.map(c => c.high),
+      low:    ohlcv.map(c => c.low),
+      close:  ohlcv.map(c => c.close),
+      volume: ohlcv.map(c => c.volume),
+      period,
+    });
+    return values[values.length - 1];
+  }
+
+  /**
+   * Calculate Parabolic SAR — dynamic trend direction + trailing stop
+   * Price above PSAR → LONG bias | Price below PSAR → SHORT bias
+   * Used by: Gunbot TrapAndTrail, many systematic crypto strategies
+   */
+  static calculatePSAR(ohlcv, step = 0.02, max = 0.2) {
+    if (ohlcv.length < 3) throw new Error(`Not enough data for PSAR`);
+    const values = PSAR.calculate({
+      high: ohlcv.map(c => c.high),
+      low:  ohlcv.map(c => c.low),
+      step,
+      max,
+    });
+    const psar  = values[values.length - 1];
+    const price = ohlcv[ohlcv.length - 1].close;
+    return { psar, trend: price > psar ? 'BULLISH' : 'BEARISH' };
+  }
+
+  /**
+   * Calculate EMA200 — macro trend separator (gold standard filter)
+   * Price > EMA200 → bull market, only take LONG setups
+   * Price < EMA200 → bear market, only take SHORT setups
+   * Used by: virtually every professional systematic trading strategy
+   */
+  static calculateEMA200(closes) {
+    if (closes.length < 200) return null;
+    const values = EMA.calculate({ values: closes, period: 200 });
+    const ema200 = values[values.length - 1];
+    const price  = closes[closes.length - 1];
+    return { ema200, trend: price > ema200 ? 'BULLISH' : 'BEARISH', distance: ((price - ema200) / ema200 * 100).toFixed(2) };
+  }
+
+  /**
+   * Calculate OBV (On Balance Volume) trend
+   * Rising OBV: volume supporting uptrend → confirms LONG
+   * Falling OBV: volume confirming downtrend → confirms SHORT
+   */
+  static calculateOBVTrend(ohlcv, lookback = 10) {
+    if (ohlcv.length < lookback + 1) return null;
+    const values = OBV.calculate({
+      close:  ohlcv.map(c => c.close),
+      volume: ohlcv.map(c => c.volume),
+    });
+    const recent = values.slice(-lookback);
+    const obvSMA = recent.reduce((a, b) => a + b, 0) / recent.length;
+    const current = values[values.length - 1];
+    const prev    = values[values.length - 2];
+    return {
+      trend:    current > obvSMA ? 'RISING' : 'FALLING',
+      momentum: current > prev   ? 'UP'     : 'DOWN',
+    };
+  }
+
+  /**
    * Calculate all indicators based on config
    * @param {Array} ohlcv - OHLCV data
    * @param {Object} indicatorConfig - Indicator configuration
@@ -198,6 +288,41 @@ class IndicatorCalculator {
       } catch (error) {
         console.error(`Stochastic calculation error: ${error.message}`);
       }
+    }
+
+    // ADX — trend strength gate (Freqtrade / 3Commas / Jesse)
+    try {
+      results.adx = this.calculateADX(ohlcv, indicatorConfig.adx?.period || 14);
+    } catch (error) {
+      // silent — not enough data early in series
+    }
+
+    // MFI — volume-weighted RSI (3Commas QFL style)
+    try {
+      results.mfi = this.calculateMFI(ohlcv, indicatorConfig.mfi?.period || 14);
+    } catch (error) {
+      // silent
+    }
+
+    // Parabolic SAR — trend direction (Gunbot TrapAndTrail style)
+    try {
+      results.psar = this.calculatePSAR(ohlcv);
+    } catch (error) {
+      // silent
+    }
+
+    // EMA200 — macro trend (gold standard filter)
+    try {
+      results.ema200 = this.calculateEMA200(closes);
+    } catch (error) {
+      // silent — needs 200+ candles
+    }
+
+    // OBV trend — volume confirmation
+    try {
+      results.obv = this.calculateOBVTrend(ohlcv);
+    } catch (error) {
+      // silent
     }
 
     return results;

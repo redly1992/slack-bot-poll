@@ -148,7 +148,12 @@ class BacktestEngine {
           result TEXT,
           
           market_condition TEXT,
-          was_correct INTEGER
+          was_correct INTEGER,
+          
+          -- Full AI response for debugging
+          ai_raw_response TEXT,
+          ai_parse_error TEXT,
+          exit_type TEXT
         );
         
         CREATE INDEX IF NOT EXISTS idx_timestamp ON backtest_signals(timestamp);
@@ -156,10 +161,17 @@ class BacktestEngine {
       `;
       
       this.db.exec(schema, (err) => {
-        if (err) reject(err);
-        else {
-          console.log('✅ Database tables created');
-          resolve();
+        if (err) { reject(err); return; }
+        console.log('✅ Database tables created');
+        // Run migrations for existing DBs (ALTER TABLE ignores errors if column exists)
+        const migrations = [
+          `ALTER TABLE backtest_signals ADD COLUMN ai_raw_response TEXT`,
+          `ALTER TABLE backtest_signals ADD COLUMN ai_parse_error TEXT`,
+          `ALTER TABLE backtest_signals ADD COLUMN exit_type TEXT`,
+        ];
+        let pending = migrations.length;
+        for (const sql of migrations) {
+          this.db.run(sql, () => { if (--pending === 0) resolve(); });
         }
       });
     });
@@ -222,77 +234,68 @@ class BacktestEngine {
   }
   
   /**
-   * Determine signal from indicators (strict thresholds to reduce noise)
+   * Determine signal from indicators
+   * Strategy inspiration:
+   *   - Freqtrade BB_RSI:  Bollinger + RSI confluence
+   *   - 3Commas QFL:       MFI (volume-weighted momentum) as primary oscillator
+   *   - Gunbot TrapAndTrail: PSAR trend direction
+   *   - Jesse/TradingView: ADX trend-strength gate (skip choppy markets)
+   *   - Professional funds: EMA200 macro filter
    */
   determineSignal(indicators) {
-    let buyScore = 0;
+    // ── ADX GATE ─────────────────────────────────────────────────────────
+    // If market is choppy (ADX < 20) skip the signal entirely.
+    // This single filter eliminates most false signals in ranging markets.
+    const adxVal = indicators.adx?.adx;
+    if (adxVal !== undefined && adxVal < 20) {
+      return { signal: 'NEUTRAL', score: 0, reasons: [`ADX too low (${adxVal.toFixed(1)}) — choppy market, skip`] };
+    }
+
+    let buyScore  = 0;
     let sellScore = 0;
     const reasons = [];
-    
-    // RSI — tight thresholds (not just neutral zone)
+
+    // ── 1. RSI — tight thresholds (Freqtrade BB_RSI style) ───────────────
     if (indicators.rsi !== undefined) {
-      if (indicators.rsi < 38) {          // genuinely oversold
-        buyScore++;
-        reasons.push(`RSI oversold (${indicators.rsi.toFixed(1)})`);
-      }
-      if (indicators.rsi > 62) {          // genuinely overbought
-        sellScore++;
-        reasons.push(`RSI overbought (${indicators.rsi.toFixed(1)})`);
-      }
+      if (indicators.rsi < 38) { buyScore++;  reasons.push(`RSI oversold (${indicators.rsi.toFixed(1)})`); }
+      if (indicators.rsi > 62) { sellScore++; reasons.push(`RSI overbought (${indicators.rsi.toFixed(1)})`); }
     }
-    
-    // EMA
+
+    // ── 2. EMA trend alignment ────────────────────────────────────────────
     const emaFast = indicators.ema?.fast || 0;
     const emaSlow = indicators.ema?.slow || 0;
-    
-    if (emaFast > emaSlow) {
-      buyScore++;
-      reasons.push('EMA bullish');
+    if (emaFast > emaSlow) { buyScore++;  reasons.push('EMA bullish'); }
+    if (emaFast < emaSlow) { sellScore++; reasons.push('EMA bearish'); }
+
+    // ── 3. MACD crossover (not just positive histogram) ───────────────────
+    const macdLine   = indicators.macd?.macd || 0;
+    const signalLine = indicators.macd?.signal || 0;
+    const histogram  = indicators.macd?.histogram || 0;
+    if (macdLine > signalLine && histogram > 0) { buyScore++;  reasons.push('MACD bullish cross'); }
+    if (macdLine < signalLine && histogram < 0) { sellScore++; reasons.push('MACD bearish cross'); }
+
+    // ── 4. MFI (Money Flow Index) — 3Commas QFL style ────────────────────
+    // Combines price + volume → more reliable than pure-price stochastic
+    if (indicators.mfi !== undefined) {
+      if (indicators.mfi < 25) { buyScore++;  reasons.push(`MFI oversold (${indicators.mfi.toFixed(1)})`); }
+      if (indicators.mfi > 75) { sellScore++; reasons.push(`MFI overbought (${indicators.mfi.toFixed(1)})`); }
     }
-    if (emaFast < emaSlow) {
-      sellScore++;
-      reasons.push('EMA bearish');
+
+    // ── 5. Parabolic SAR — Gunbot TrapAndTrail style ──────────────────────
+    if (indicators.psar) {
+      if (indicators.psar.trend === 'BULLISH') { buyScore++;  reasons.push(`PSAR bullish (price > ${indicators.psar.psar?.toFixed(2)})`); }
+      if (indicators.psar.trend === 'BEARISH') { sellScore++; reasons.push(`PSAR bearish (price < ${indicators.psar.psar?.toFixed(2)})`); }
     }
-    
-    // MACD — require meaningful histogram (not just > 0)
-    const macd = indicators.macd?.histogram || 0;
-    if (macd > 0) {
-      buyScore++;
-      reasons.push('MACD positive');
-    }
-    if (macd < 0) {
-      sellScore++;
-      reasons.push('MACD negative');
-    }
-    
-    // Stochastic — tight thresholds
-    const stochK = indicators.stochastic?.k || 50;
-    
-    if (stochK < 25) {
-      buyScore++;
-      reasons.push('Stoch oversold');
-    }
-    if (stochK > 75) {
-      sellScore++;
-      reasons.push('Stoch overbought');
-    }
-    
-    // Bollinger
-    const price = indicators.price;
+
+    // ── 6. Bollinger Band position ────────────────────────────────────────
+    const price   = indicators.price;
     const bbLower = indicators.bollinger?.lower;
     const bbUpper = indicators.bollinger?.upper;
-    
-    if (bbLower && price < bbLower * 1.003) {
-      buyScore++;
-      reasons.push('Near BB lower');
-    }
-    if (bbUpper && price > bbUpper * 0.997) {
-      sellScore++;
-      reasons.push('Near BB upper');
-    }
-    
-    // Require at least 3 indicators agreeing (was 2 — too loose)
-    if (buyScore >= 3) return { signal: 'BUY', score: buyScore, reasons };
+    if (bbLower && price < bbLower * 1.003) { buyScore++;  reasons.push('Near BB lower'); }
+    if (bbUpper && price > bbUpper * 0.997) { sellScore++; reasons.push('Near BB upper'); }
+
+    // ── Require 3 of 6 indicators agreeing ───────────────────────────────
+    if (buyScore  >= 3) return { signal: 'BUY',  score: buyScore,  reasons };
     if (sellScore >= 3) return { signal: 'SELL', score: sellScore, reasons };
     return { signal: 'NEUTRAL', score: 0, reasons };
   }
@@ -364,8 +367,9 @@ class BacktestEngine {
           signal_5m, signal_15m, signal_1h, alignment,
           ai_signal, ai_confidence, ai_reasoning, ai_entry_reason, ai_stop_loss_reason, ai_risk_level,
           stop_loss_price, take_profit_price,
-          entry_price, direction, market_condition
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          entry_price, direction, market_condition,
+          ai_raw_response, ai_parse_error
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       stmt.run(
@@ -391,6 +395,8 @@ class BacktestEngine {
         signalData.entry_price,
         signalData.direction,
         signalData.market_condition,
+        signalData.ai_raw_response || null,
+        signalData.ai_parse_error || null,
         (err) => {
           if (err) reject(err);
           else {
@@ -493,15 +499,25 @@ class BacktestEngine {
       const ind4h = this.calculateIndicators(candles4h);
       
       // Determine signals
-      const sig5m = this.determineSignal(ind5m);
+      const sig5m  = this.determineSignal(ind5m);
       const sig15m = this.determineSignal(ind15m);
-      const sig1h = this.determineSignal(ind1h);
-      
-      // 4H direction is the primary filter — lower TFs must agree WITH 4H
+      const sig1h  = this.determineSignal(ind1h);
+
+      // ── EMA200 macro filter (professional gold standard) ───────────────
+      // Only trade WITH the macro trend. Skip setups that fight EMA200.
+      const ema200Info = ind4h.ema200;
+      const macroTrend = ema200Info?.trend || (ind4h.ema?.fast > ind4h.ema?.slow ? 'BULLISH' : 'BEARISH');
+
+      // ── 4H EMA alignment as primary direction ─────────────────────────
       const h4Bullish = ind4h.ema?.fast > ind4h.ema?.slow;
-      const allBuy  = h4Bullish  && sig5m.signal === 'BUY'  && sig15m.signal === 'BUY'  && sig1h.signal === 'BUY';
-      const allSell = !h4Bullish && sig5m.signal === 'SELL' && sig15m.signal === 'SELL' && sig1h.signal === 'SELL';
-      
+
+      // Require 4H direction AND EMA200 macro trend to agree (belt + suspenders)
+      const canGoLong  = h4Bullish  && macroTrend === 'BULLISH';
+      const canGoShort = !h4Bullish && macroTrend === 'BEARISH';
+
+      const allBuy  = canGoLong  && sig5m.signal === 'BUY'  && sig15m.signal === 'BUY'  && sig1h.signal === 'BUY';
+      const allSell = canGoShort && sig5m.signal === 'SELL' && sig15m.signal === 'SELL' && sig1h.signal === 'SELL';
+
       // Cooldown: skip if last signal was within 16 candles (4 hours on 15m chart)
       const candlesSinceLastSignal = i - (this.lastSignalIndex || 0);
       if ((allBuy || allSell) && candlesSinceLastSignal < 16) continue;
@@ -517,8 +533,8 @@ class BacktestEngine {
         // Get AI prediction
         const aiAnalysis = await this.getAIPrediction(ind15m, ind4h, candles15m);
         
-        if (aiAnalysis && aiAnalysis.signal && aiAnalysis.signal !== 'HOLD') {
-          // Record signal
+        // Always record — even HOLD/parse-error — so we can investigate
+        if (aiAnalysis) {
           await this.recordSignal({
             timestamp,
             date: currentCandle.date,
@@ -541,11 +557,14 @@ class BacktestEngine {
             take_profit_price: aiAnalysis.takeProfit || null,
             entry_price: currentCandle.close,
             direction: aiAnalysis.signal,
-            market_condition: ind4h.ema?.fast > ind4h.ema?.slow ? 'BULLISH' : 'BEARISH'
+            market_condition: ind4h.ema?.fast > ind4h.ema?.slow ? 'BULLISH' : 'BEARISH',
+            ai_raw_response: aiAnalysis.rawResponse || null,
+            ai_parse_error: aiAnalysis.parseError || null
           });
-          this.lastSignalIndex = i; // track cooldown
-          
-          // Stats updated in recordSignal callback
+          // Only track cooldown for real trade signals (not HOLD/errors)
+          if (aiAnalysis.signal && aiAnalysis.signal !== 'HOLD') {
+            this.lastSignalIndex = i;
+          }
         }
         
         // Limit API calls for cost

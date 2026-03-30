@@ -67,6 +67,8 @@ class AIAnalyzer {
         takeProfit: analysis.takeProfit || null,
         stopLossReason: analysis.stopLossReason || '',
         entryReason: analysis.entryReason || '',
+        rawResponse: analysis._rawResponse || null,
+        parseError: analysis._parseError || null,
         model: this.model,
         provider: this.provider,
         timestamp: new Date().toISOString()
@@ -125,7 +127,15 @@ Your response must be valid JSON with this structure:
       response_format: { type: 'json_object' }
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    const rawText = response.choices[0].message.content;
+    let parsed;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch (e) {
+      return { _rawResponse: rawText, _parseError: e.message, signal: 'HOLD', confidence: 0, reasoning: ['JSON parse failed'] };
+    }
+    parsed._rawResponse = rawText;
+    return parsed;
   }
 
   /**
@@ -164,12 +174,13 @@ Your response must be valid JSON with this structure:
 
     const fullPrompt = `${systemPrompt}\n\n${prompt}`;
     
+    let rawText = '';
     try {
       const result = await model.generateContent(fullPrompt);
-      const response = result.response;
-      const text = response.text();
-      
-      return JSON.parse(text);
+      rawText = result.response.text();
+      const parsed = JSON.parse(rawText);
+      parsed._rawResponse = rawText;
+      return parsed;
     } catch (error) {
       // If JSON parsing fails or model not found, try gemini-2.5-flash as fallback
       if (error.message.includes('not found') || error.message.includes('404')) {
@@ -183,9 +194,12 @@ Your response must be valid JSON with this structure:
         });
         const fallbackResult = await fallbackModel.generateContent(fullPrompt);
         const fallbackText = fallbackResult.response.text();
-        return JSON.parse(fallbackText);
+        const fallbackParsed = JSON.parse(fallbackText);
+        fallbackParsed._rawResponse = fallbackText;
+        return fallbackParsed;
       }
-      throw error;
+      // JSON parse failed — return raw text with error marker
+      return { _rawResponse: rawText, _parseError: error.message, signal: 'HOLD', confidence: 0, reasoning: ['JSON parse failed'] };
     }
   }
 
@@ -240,15 +254,55 @@ Your response must be valid JSON with this structure:
       const emaTrend = indicators.ema.fast > indicators.ema.slow ? 'Bullish' : 'Bearish';
       prompt += `EMA Fast/Slow: ${indicators.ema.fast.toFixed(2)} / ${indicators.ema.slow.toFixed(2)} → ${emaTrend}\n`;
     }
+
+    // EMA200 macro trend (gold standard filter)
+    if (indicators.ema200) {
+      prompt += `EMA200: ${indicators.ema200.ema200.toFixed(2)} | Macro trend: ${indicators.ema200.trend} (price ${indicators.ema200.distance}% from EMA200)\n`;
+    }
+
     if (indicators.macd) {
-      const macdDir = indicators.macd.histogram > 0 ? 'Bullish momentum' : 'Bearish momentum';
-      prompt += `MACD: ${indicators.macd.macd.toFixed(2)} | Signal: ${indicators.macd.signal.toFixed(2)} | Histogram: ${indicators.macd.histogram.toFixed(2)} → ${macdDir}\n`;
+      const macdCross = indicators.macd.macd > indicators.macd.signal ? 'MACD above signal (bullish)' : 'MACD below signal (bearish)';
+      prompt += `MACD: ${indicators.macd.macd.toFixed(2)} | Signal: ${indicators.macd.signal.toFixed(2)} | Histogram: ${indicators.macd.histogram.toFixed(2)} → ${macdCross}\n`;
     }
     if (indicators.bollinger) {
       prompt += `Bollinger Bands: Lower ${indicators.bollinger.lower.toFixed(2)} | Middle ${indicators.bollinger.middle.toFixed(2)} | Upper ${indicators.bollinger.upper.toFixed(2)}\n`;
-      if (indicators.price < indicators.bollinger.lower) prompt += `  → Price below lower band (potential bounce)\n`;
-      else if (indicators.price > indicators.bollinger.upper) prompt += `  → Price above upper band (potential pullback)\n`;
+      if (indicators.price < indicators.bollinger.lower) prompt += `  → Price BELOW lower band (strong oversold signal)\n`;
+      else if (indicators.price > indicators.bollinger.upper) prompt += `  → Price ABOVE upper band (strong overbought signal)\n`;
+      else {
+        const bbPct = ((indicators.price - indicators.bollinger.lower) / (indicators.bollinger.upper - indicators.bollinger.lower) * 100).toFixed(0);
+        prompt += `  → Price at ${bbPct}% of BB range (0%=lower, 100%=upper)\n`;
+      }
     }
+
+    // MFI — volume-weighted momentum (3Commas QFL style, more reliable than Stochastic)
+    if (indicators.mfi !== undefined) {
+      prompt += `MFI(14) [Volume-weighted RSI]: ${indicators.mfi.toFixed(2)}`;
+      if (indicators.mfi < 20) prompt += ` → STRONGLY oversold (volume confirms selling exhaustion)`;
+      else if (indicators.mfi < 40) prompt += ` → Mildly oversold`;
+      else if (indicators.mfi > 80) prompt += ` → STRONGLY overbought (volume confirms buying exhaustion)`;
+      else if (indicators.mfi > 60) prompt += ` → Mildly overbought`;
+      else prompt += ` → Neutral`;
+      prompt += '\n';
+    }
+
+    // ADX — trend strength (Freqtrade/Jesse style)
+    if (indicators.adx) {
+      const adxStrength = indicators.adx.adx > 40 ? 'Very Strong trend' : indicators.adx.adx > 25 ? 'Strong trend' : indicators.adx.adx > 20 ? 'Moderate trend' : 'Weak/Ranging';
+      prompt += `ADX(14) [Trend Strength]: ${indicators.adx.adx.toFixed(2)} → ${adxStrength}`;
+      prompt += ` | +DI: ${indicators.adx.pdi?.toFixed(2)} / -DI: ${indicators.adx.mdi?.toFixed(2)}`;
+      prompt += ` (${indicators.adx.pdi > indicators.adx.mdi ? '+DI dominant = bullish pressure' : '-DI dominant = bearish pressure'})\n`;
+    }
+
+    // Parabolic SAR — trend direction (Gunbot style)
+    if (indicators.psar) {
+      prompt += `Parabolic SAR: ${indicators.psar.psar?.toFixed(2)} → Price ${indicators.psar.trend === 'BULLISH' ? 'ABOVE PSAR (bullish)' : 'BELOW PSAR (bearish)'}\n`;
+    }
+
+    // OBV volume trend
+    if (indicators.obv) {
+      prompt += `OBV Volume Trend: ${indicators.obv.trend} (${indicators.obv.momentum === 'UP' ? '↑ buying volume' : '↓ selling volume'})\n`;
+    }
+
     if (indicators.stochastic) {
       prompt += `Stochastic %K/%D: ${indicators.stochastic.k.toFixed(2)} / ${indicators.stochastic.d.toFixed(2)}`;
       if (indicators.stochastic.k < 20) prompt += ` → Oversold`;

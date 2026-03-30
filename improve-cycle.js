@@ -427,7 +427,9 @@ Return ONLY the complete learned-strategy.md content. No explanation before or a
       return;
     }
     
-    const winRate = ((data.analysis.wins / data.analysis.totalSignals) * 100).toFixed(1);
+    const winRate = data.analysis.totalSignals > 0
+      ? ((data.analysis.wins / data.analysis.totalSignals) * 100).toFixed(1)
+      : '0.0';
     console.log(`${'='.repeat(70)}`);
     console.log(`Performance: ${winRate}% win rate | ${data.analysis.wins} wins / ${data.analysis.losses} losses | ${data.analysis.totalSignals} total`);
     console.log(`${'='.repeat(70)}\n`);
