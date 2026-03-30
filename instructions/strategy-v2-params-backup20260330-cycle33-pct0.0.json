@@ -41,8 +41,8 @@
       "tpAtr": 2.6
     },
     "setupB": {
-      "slAtr": 2.4,
-      "tpAtr": 3.4
+      "slAtr": 2.2,
+      "tpAtr": 4
     },
     "setupC": {
       "slAtr": 1.4,
@@ -50,11 +50,11 @@
     }
   },
   "filters": {
-    "cooldownCandles": 28,
+    "cooldownCandles": 24,
     "ema200Required": true
   },
-  "_lastImproved": "2026-03-30T16:40:00.715Z",
-  "_cycleNumber": 53,
-  "_prevWinRate": 40.2,
+  "_lastImproved": "2026-03-30T16:32:22.317Z",
+  "_cycleNumber": 32,
+  "_prevWinRate": 42.6,
   "_description": "V2 Trading Strategy Parameters — auto-tuned by AI after each backtest"
 }

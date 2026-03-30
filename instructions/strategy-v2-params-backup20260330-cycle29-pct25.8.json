@@ -21,17 +21,17 @@
   },
   "setupB": {
     "name": "Extreme Oversold/Overbought",
-    "enabled": true,
+    "enabled": false,
     "rsiLongMax": 32,
     "rsiShortMin": 68,
     "mfiLongMax": 28,
     "mfiShortMin": 72,
     "bbBreachRequired": true,
-    "scoreThreshold": 6
+    "scoreThreshold": 5
   },
   "setupC": {
     "name": "MACD Momentum Cross",
-    "enabled": false,
+    "enabled": true,
     "adxMinimum": 28,
     "scoreThreshold": 6
   },
@@ -41,8 +41,8 @@
       "tpAtr": 2.6
     },
     "setupB": {
-      "slAtr": 2.4,
-      "tpAtr": 3.4
+      "slAtr": 2,
+      "tpAtr": 4
     },
     "setupC": {
       "slAtr": 1.4,
@@ -50,11 +50,11 @@
     }
   },
   "filters": {
-    "cooldownCandles": 28,
+    "cooldownCandles": 24,
     "ema200Required": true
   },
-  "_lastImproved": "2026-03-30T16:40:00.715Z",
-  "_cycleNumber": 53,
-  "_prevWinRate": 40.2,
+  "_lastImproved": "2026-03-30T16:29:23.916Z",
+  "_cycleNumber": 28,
+  "_prevWinRate": 41.8,
   "_description": "V2 Trading Strategy Parameters — auto-tuned by AI after each backtest"
 }
