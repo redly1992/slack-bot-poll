@@ -2,28 +2,28 @@
   "version": 2,
   "description": "V2 Trading Strategy Parameters — auto-tuned by AI after each backtest",
   "marketRegime": {
-    "adxTrendMinimum": 22,
+    "adxTrendMinimum": 23,
     "adxStrongTrend": 28
   },
   "setupA": {
     "name": "EMA Pullback in Trend",
     "enabled": true,
     "rsiLong": {
-      "min": 34,
+      "min": 38,
       "max": 50
     },
     "rsiShort": {
       "min": 48,
       "max": 65
     },
-    "emaPullbackPct": 1.5,
-    "scoreThreshold": 6
+    "emaPullbackPct": 1.4,
+    "scoreThreshold": 7
   },
   "setupB": {
     "name": "Extreme Oversold/Overbought",
     "enabled": true,
-    "rsiLongMax": 36,
-    "mfiLongMax": 36,
+    "rsiLongMax": 38,
+    "mfiLongMax": 38,
     "rsiShortMin": 64,
     "mfiShortMin": 64,
     "bbBreachRequired": true,
@@ -33,11 +33,11 @@
     "name": "MACD Momentum Cross",
     "enabled": true,
     "adxMinimum": 24,
-    "scoreThreshold": 6
+    "scoreThreshold": 7
   },
   "riskManagement": {
     "setupA": {
-      "slAtr": 2.2,
+      "slAtr": 2.4,
       "tpAtr": 3.5
     },
     "setupB": {
@@ -50,11 +50,11 @@
     }
   },
   "filters": {
-    "cooldownCandles": 28
+    "cooldownCandles": 32
   },
-  "_lastImproved": "2026-03-31T10:42:39.559Z",
-  "_cycleNumber": 66,
-  "_prevWinRate": 47.257383966244724,
+  "_lastImproved": "2026-03-31T10:37:51.782Z",
+  "_cycleNumber": 65,
+  "_prevWinRate": 47.69230769230769,
   "_bestWinRate": 47.706422018348626,
   "_wasRegression": true,
   "_description": "V2 Trading Strategy Parameters — auto-tuned by AI"

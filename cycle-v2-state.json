@@ -1,68 +1,68 @@
 {
   "status": "running",
-  "pid": 14381,
-  "cycleNumber": 55,
+  "pid": 6876,
+  "cycleNumber": 67,
   "overallStartedAt": "2026-03-31T02:59:30.246Z",
   "symbol": "BTC/USDT",
-  "cycleStartedAt": "2026-03-31T09:32:16.887Z",
-  "currentStep": "improve-v2",
-  "stepNumber": 3,
-  "stepStartedAt": "2026-03-31T09:34:20.854Z",
+  "cycleStartedAt": "2026-03-31T10:42:41.584Z",
+  "currentStep": "cleanup",
+  "stepNumber": 1,
+  "stepStartedAt": "2026-03-31T10:42:41.584Z",
   "bestWinRate": 47.706422018348626,
-  "bestParamsFile": "strategy-v2-params-backup20260331-cycle51-pct47.7.json",
-  "totalCyclesCompleted": 54,
-  "lastCycleCompletedAt": "2026-03-31T09:31:45.153Z",
-  "avgCycleDurationMs": 292322,
+  "bestParamsFile": "strategy-v2-params-backup20260331-cycle61-pct47.7.json",
+  "totalCyclesCompleted": 66,
+  "lastCycleCompletedAt": "2026-03-31T10:42:41.581Z",
+  "avgCycleDurationMs": 287765,
   "cycleHistory": [
     {
-      "cycle": 48,
-      "winRate": 47.19,
-      "signals": 462,
+      "cycle": 57,
+      "winRate": 46.29,
+      "signals": 445,
       "caps": []
     },
     {
-      "cycle": 49,
+      "cycle": 58,
+      "winRate": 46.94,
+      "signals": 458,
+      "caps": []
+    },
+    {
+      "cycle": 59,
       "winRate": 47.71,
       "signals": 436,
       "caps": []
     },
     {
-      "cycle": 50,
+      "cycle": 60,
       "winRate": 47.71,
       "signals": 436,
       "caps": []
     },
     {
-      "cycle": 51,
+      "cycle": 61,
       "winRate": 47.71,
       "signals": 436,
       "caps": []
     },
     {
-      "cycle": 52,
-      "winRate": 46.65,
-      "signals": 373,
-      "caps": []
-    },
-    {
-      "cycle": 53,
+      "cycle": 63,
       "winRate": 47.69,
       "signals": 455,
       "caps": []
     },
     {
-      "cycle": 54,
+      "cycle": 65,
       "winRate": 47.69,
       "signals": 455,
       "caps": []
     },
     {
-      "cycle": 55,
-      "winRate": 47.69,
-      "signals": 455,
+      "cycle": 66,
+      "winRate": 47.26,
+      "signals": 237,
       "caps": []
     }
   ],
-  "stuckCycles": 3,
+  "stuckCycles": 1,
   "lastCycleCaps": []
 }

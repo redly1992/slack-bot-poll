@@ -9,15 +9,15 @@
     "name": "EMA Pullback in Trend",
     "enabled": true,
     "rsiLong": {
-      "min": 34,
-      "max": 50
+      "min": 38,
+      "max": 52
     },
     "rsiShort": {
-      "min": 48,
-      "max": 65
+      "min": 49,
+      "max": 66
     },
-    "emaPullbackPct": 1.5,
-    "scoreThreshold": 6
+    "emaPullbackPct": 1.7,
+    "scoreThreshold": 7
   },
   "setupB": {
     "name": "Extreme Oversold/Overbought",
@@ -32,7 +32,7 @@
   "setupC": {
     "name": "MACD Momentum Cross",
     "enabled": true,
-    "adxMinimum": 24,
+    "adxMinimum": 20,
     "scoreThreshold": 6
   },
   "riskManagement": {
@@ -50,11 +50,11 @@
     }
   },
   "filters": {
-    "cooldownCandles": 28
+    "cooldownCandles": 30
   },
-  "_lastImproved": "2026-03-31T10:42:39.559Z",
-  "_cycleNumber": 66,
-  "_prevWinRate": 47.257383966244724,
+  "_lastImproved": "2026-03-31T10:15:34.650Z",
+  "_cycleNumber": 57,
+  "_prevWinRate": 46.29213483146067,
   "_bestWinRate": 47.706422018348626,
   "_wasRegression": true,
   "_description": "V2 Trading Strategy Parameters — auto-tuned by AI"
