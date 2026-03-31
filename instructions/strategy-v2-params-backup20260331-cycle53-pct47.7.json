@@ -16,7 +16,7 @@
       "min": 48,
       "max": 65
     },
-    "emaPullbackPct": 1.6,
+    "emaPullbackPct": 1.4,
     "scoreThreshold": 7
   },
   "setupB": {
@@ -52,9 +52,9 @@
   "filters": {
     "cooldownCandles": 30
   },
-  "_lastImproved": "2026-03-31T09:31:43.142Z",
-  "_cycleNumber": 54,
-  "_prevWinRate": 47.69230769230769,
+  "_lastImproved": "2026-03-31T09:21:49.649Z",
+  "_cycleNumber": 52,
+  "_prevWinRate": 46.64879356568365,
   "_bestWinRate": 47.706422018348626,
   "_wasRegression": true,
   "_description": "V2 Trading Strategy Parameters — auto-tuned by AI"

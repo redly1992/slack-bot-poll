@@ -9,11 +9,11 @@
     "name": "EMA Pullback in Trend",
     "enabled": true,
     "rsiLong": {
-      "min": 36,
+      "min": 35,
       "max": 50
     },
     "rsiShort": {
-      "min": 48,
+      "min": 50,
       "max": 65
     },
     "emaPullbackPct": 1.6,
@@ -32,7 +32,7 @@
   "setupC": {
     "name": "MACD Momentum Cross",
     "enabled": true,
-    "adxMinimum": 20,
+    "adxMinimum": 18,
     "scoreThreshold": 6
   },
   "riskManagement": {
@@ -52,10 +52,10 @@
   "filters": {
     "cooldownCandles": 30
   },
-  "_lastImproved": "2026-03-31T09:31:43.142Z",
-  "_cycleNumber": 54,
-  "_prevWinRate": 47.69230769230769,
+  "_lastImproved": "2026-03-31T09:07:58.648Z",
+  "_cycleNumber": 49,
+  "_prevWinRate": 47.706422018348626,
   "_bestWinRate": 47.706422018348626,
-  "_wasRegression": true,
+  "_wasRegression": false,
   "_description": "V2 Trading Strategy Parameters — auto-tuned by AI"
 }

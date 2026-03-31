@@ -1,16 +1,68 @@
 {
   "status": "running",
-  "pid": 45072,
-  "cycleNumber": 3,
+  "pid": 14381,
+  "cycleNumber": 55,
   "overallStartedAt": "2026-03-31T02:59:30.246Z",
   "symbol": "BTC/USDT",
-  "cycleStartedAt": "2026-03-31T03:06:40.951Z",
-  "currentStep": "backtest",
-  "stepNumber": 2,
-  "stepStartedAt": "2026-03-31T03:06:42.955Z",
-  "bestWinRate": 37.60064412238325,
-  "bestParamsFile": "strategy-v2-params-backup20260331-cycle1-pct37.6.json",
-  "totalCyclesCompleted": 2,
-  "lastCycleCompletedAt": "2026-03-31T03:06:40.947Z",
-  "avgCycleDurationMs": 201135
+  "cycleStartedAt": "2026-03-31T09:32:16.887Z",
+  "currentStep": "improve-v2",
+  "stepNumber": 3,
+  "stepStartedAt": "2026-03-31T09:34:20.854Z",
+  "bestWinRate": 47.706422018348626,
+  "bestParamsFile": "strategy-v2-params-backup20260331-cycle51-pct47.7.json",
+  "totalCyclesCompleted": 54,
+  "lastCycleCompletedAt": "2026-03-31T09:31:45.153Z",
+  "avgCycleDurationMs": 292322,
+  "cycleHistory": [
+    {
+      "cycle": 48,
+      "winRate": 47.19,
+      "signals": 462,
+      "caps": []
+    },
+    {
+      "cycle": 49,
+      "winRate": 47.71,
+      "signals": 436,
+      "caps": []
+    },
+    {
+      "cycle": 50,
+      "winRate": 47.71,
+      "signals": 436,
+      "caps": []
+    },
+    {
+      "cycle": 51,
+      "winRate": 47.71,
+      "signals": 436,
+      "caps": []
+    },
+    {
+      "cycle": 52,
+      "winRate": 46.65,
+      "signals": 373,
+      "caps": []
+    },
+    {
+      "cycle": 53,
+      "winRate": 47.69,
+      "signals": 455,
+      "caps": []
+    },
+    {
+      "cycle": 54,
+      "winRate": 47.69,
+      "signals": 455,
+      "caps": []
+    },
+    {
+      "cycle": 55,
+      "winRate": 47.69,
+      "signals": 455,
+      "caps": []
+    }
+  ],
+  "stuckCycles": 3,
+  "lastCycleCaps": []
 }

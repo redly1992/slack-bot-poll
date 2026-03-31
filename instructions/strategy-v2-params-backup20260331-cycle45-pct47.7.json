@@ -32,8 +32,8 @@
   "setupC": {
     "name": "MACD Momentum Cross",
     "enabled": true,
-    "adxMinimum": 20,
-    "scoreThreshold": 6
+    "adxMinimum": 24,
+    "scoreThreshold": 7
   },
   "riskManagement": {
     "setupA": {
@@ -52,10 +52,10 @@
   "filters": {
     "cooldownCandles": 30
   },
-  "_lastImproved": "2026-03-31T09:31:43.142Z",
-  "_cycleNumber": 54,
-  "_prevWinRate": 47.69230769230769,
-  "_bestWinRate": 47.706422018348626,
+  "_lastImproved": "2026-03-31T08:44:22.816Z",
+  "_cycleNumber": 44,
+  "_prevWinRate": 45.05988023952096,
+  "_bestWinRate": 45.45454545454545,
   "_wasRegression": true,
   "_description": "V2 Trading Strategy Parameters — auto-tuned by AI"
 }
