@@ -16,30 +16,9 @@ class PricePredictionTool {
     this.marketData = new MarketDataFetcher(this.exchange);
     this.parser = new InstructionParser('instructions/learned-strategy.md');
     
-    // Initialize DeepSeek AI
-    const aiProvider = process.env.AI_PROVIDER || 'deepseek';
-    let aiApiKey, aiModel;
-    
-    if (aiProvider === 'deepseek') {
-      aiApiKey = process.env.DEEPSEEK_API_KEY;
-      aiModel = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
-    } else if (aiProvider === 'gemini') {
-      aiApiKey = process.env.GEMINI_API_KEY;
-      aiModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-    } else if (aiProvider === 'openai') {
-      aiApiKey = process.env.OPENAI_API_KEY;
-      aiModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-    }
-    
-    if (!aiApiKey || aiApiKey.includes('your_')) {
-      throw new Error(`${aiProvider.toUpperCase()}_API_KEY not configured in .env file`);
-    }
-    
-    this.aiAnalyzer = new AIAnalyzer({
-      provider: aiProvider,
-      apiKey: aiApiKey,
-      model: aiModel
-    });
+    // Initialize AI via shared provider config (set AI_PROVIDER in .env)
+    const { resolveAIConfig } = require('./src/aiClient');
+    this.aiAnalyzer = new AIAnalyzer(resolveAIConfig());
     
     // Initialize Telegram notifier (optional)
     const telegramToken = process.env.TELEGRAM_BOT_TOKEN;

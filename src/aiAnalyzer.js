@@ -3,38 +3,47 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 class AIAnalyzer {
   constructor(config) {
-    this.provider = config.provider || 'openai'; // 'openai', 'gemini', or 'deepseek'
+    this.provider = config.provider || 'openrouter';
     this.model = config.model;
-    
-    if (this.provider === 'openai') {
-      if (!config.apiKey) {
-        throw new Error('OpenAI API key is required');
-      }
+
+    if (this.provider === 'openrouter') {
+      if (!config.apiKey) throw new Error('OpenRouter API key is required');
+      this.client = new OpenAI({
+        apiKey: config.apiKey,
+        baseURL: 'https://openrouter.ai/api/v1',
+        defaultHeaders: {
+          'HTTP-Referer': 'https://github.com/trading-bot',
+          'X-Title': 'Trading Bot',
+        },
+      });
+      this.model = this.model || 'deepseek/deepseek-chat';
+      console.log(`✅ AI Analyzer initialized (OpenRouter ${this.model})`);
+
+    } else if (this.provider === 'openai') {
+      if (!config.apiKey) throw new Error('OpenAI API key is required');
       this.client = new OpenAI({ apiKey: config.apiKey });
       this.model = this.model || 'gpt-4o-mini';
       console.log(`✅ AI Analyzer initialized (OpenAI ${this.model})`);
-      
+
     } else if (this.provider === 'deepseek') {
-      if (!config.apiKey) {
-        throw new Error('DeepSeek API key is required');
-      }
-      this.client = new OpenAI({ 
+      if (!config.apiKey) throw new Error('DeepSeek API key is required');
+      this.client = new OpenAI({
         apiKey: config.apiKey,
-        baseURL: 'https://api.deepseek.com'
+        baseURL: 'https://api.deepseek.com',
       });
       this.model = this.model || 'deepseek-chat';
       console.log(`✅ AI Analyzer initialized (DeepSeek ${this.model})`);
-      
+
     } else if (this.provider === 'gemini') {
-      if (!config.apiKey) {
-        throw new Error('Gemini API key is required');
-      }
+      if (!config.apiKey) throw new Error('Gemini API key is required');
       this.client = new GoogleGenerativeAI(config.apiKey);
       this.model = this.model || 'gemini-1.5-flash';
       console.log(`✅ AI Analyzer initialized (Gemini ${this.model})`);
-      
+
     } else {
-      throw new Error(`Unknown AI provider: ${this.provider}. Use 'openai', 'deepseek', or 'gemini'`);
+      throw new Error(
+        `Unknown AI provider: ${this.provider}. Use 'openrouter', 'openai', 'deepseek', or 'gemini'`
+      );
     }
   }
 
@@ -51,7 +60,7 @@ class AIAnalyzer {
       const prompt = this.buildAnalysisPrompt(symbol, indicators, ohlcv, strategyInstructions);
       
       let analysis;
-      if (this.provider === 'openai' || this.provider === 'deepseek') {
+      if (this.provider === 'openrouter' || this.provider === 'openai' || this.provider === 'deepseek') {
         analysis = await this.analyzeWithOpenAI(prompt);
       } else if (this.provider === 'gemini') {
         analysis = await this.analyzeWithGemini(prompt);

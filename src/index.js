@@ -18,38 +18,17 @@ class TradingBot {
     this.parser = new InstructionParser(this.instructionFile);
     this.marketData = new MarketDataFetcher(this.exchange);
     
-    // Initialize AI analyzer (optional)
+    // Initialize AI analyzer (optional, set AI_ENABLED=true and AI_PROVIDER in .env)
     const aiEnabled = process.env.AI_ENABLED === 'true';
-    const aiProvider = process.env.AI_PROVIDER || 'deepseek'; // Default to DeepSeek
-    
-    // Get API key and model based on provider
-    let aiApiKey, aiModel;
-    if (aiProvider === 'openai') {
-      aiApiKey = process.env.OPENAI_API_KEY;
-      aiModel = process.env.OPENAI_MODEL || process.env.AI_MODEL || 'gpt-4o-mini';
-    } else if (aiProvider === 'deepseek') {
-      aiApiKey = process.env.DEEPSEEK_API_KEY;
-      aiModel = process.env.DEEPSEEK_MODEL || process.env.AI_MODEL || 'deepseek-chat';
-    } else if (aiProvider === 'gemini') {
-      aiApiKey = process.env.GEMINI_API_KEY;
-      aiModel = process.env.GEMINI_MODEL || process.env.AI_MODEL || 'gemini-1.5-flash';
-    }
-
-    if (aiEnabled && aiApiKey && !aiApiKey.includes('your_')) {
+    if (aiEnabled) {
       try {
-        this.aiAnalyzer = new AIAnalyzer({
-          provider: aiProvider,
-          apiKey: aiApiKey,
-          model: aiModel
-        });
+        const { resolveAIConfig } = require('./aiClient');
+        this.aiAnalyzer = new AIAnalyzer(resolveAIConfig());
         this.useAI = true;
       } catch (error) {
         console.log(`⚠️  AI Analyzer initialization failed: ${error.message}`);
         this.useAI = false;
       }
-    } else if (aiEnabled) {
-      console.log(`⚠️  AI enabled but ${aiProvider.toUpperCase()}_API_KEY not configured, using technical indicators only`);
-      this.useAI = false;
     } else {
       console.log('ℹ️  AI analysis disabled, using technical indicators only');
       this.useAI = false;

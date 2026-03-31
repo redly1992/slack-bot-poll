@@ -2,7 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
-const OpenAI = require('openai');
+const { createAIClient } = require('./src/aiClient');
 const PnLCalculator = require('./calculate-pnl.js');
 const ResultsAnalyzer = require('./analyze-results.js');
 
@@ -36,15 +36,10 @@ class AutoImprover {
       }
     } catch (_) {}
     
-    // Initialize AI client
-    const provider = process.env.AI_PROVIDER || 'deepseek';
-    const apiKey = provider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : process.env.GEMINI_API_KEY;
-    const baseURL = provider === 'deepseek' ? 'https://api.deepseek.com' : undefined;
-    this.aiModel = provider === 'deepseek'
-      ? (process.env.DEEPSEEK_MODEL || 'deepseek-chat')
-      : (process.env.GEMINI_MODEL || 'gemini-1.5-flash');
-    
-    this.ai = new OpenAI({ apiKey, baseURL });
+    // Initialize AI client via shared factory (set AI_PROVIDER in .env)
+    const { client, model } = createAIClient();
+    this.ai      = client;
+    this.aiModel = model;
   }
   
   /**

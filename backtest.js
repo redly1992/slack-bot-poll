@@ -21,27 +21,9 @@ class BacktestEngine {
     this.checkpointFile = config.checkpointFile || 'backtest-checkpoint.json';
     this.fresh = config.fresh || false; // If true, ignore checkpoint and start fresh
     
-    // Initialize AI
-    const aiProvider = process.env.AI_PROVIDER || 'deepseek';
-    let aiApiKey, aiModel;
-    
-    if (aiProvider === 'deepseek') {
-      aiApiKey = process.env.DEEPSEEK_API_KEY;
-      aiModel = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
-    } else if (aiProvider === 'gemini') {
-      aiApiKey = process.env.GEMINI_API_KEY;
-      aiModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-    }
-    
-    if (!aiApiKey || aiApiKey.includes('your_')) {
-      throw new Error(`${aiProvider.toUpperCase()}_API_KEY not configured`);
-    }
-    
-    this.aiAnalyzer = new AIAnalyzer({
-      provider: aiProvider,
-      apiKey: aiApiKey,
-      model: aiModel
-    });
+    // Initialize AI via shared provider config (set AI_PROVIDER in .env)
+    const { resolveAIConfig } = require('./src/aiClient');
+    this.aiAnalyzer = new AIAnalyzer(resolveAIConfig());
     
     this.db = null;
     this.stats = {

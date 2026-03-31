@@ -3,7 +3,7 @@ require('dotenv').config();
 const fs      = require('fs');
 const path    = require('path');
 const sqlite3 = require('sqlite3').verbose();
-const OpenAI  = require('openai');
+const { createAIClient } = require('./src/aiClient');
 
 const DB_PATH        = 'backtest-results-v2.db';
 const PARAMS_PATH    = path.join('instructions', 'strategy-v2-params.json');
@@ -332,20 +332,18 @@ class ImproveV2 {
   }
 
   async callAI(analysis, paramsToImprove, regressionContext = null, stuckContext = null) {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey || apiKey.includes('your_')) {
-      throw new Error('DEEPSEEK_API_KEY not configured in .env');
-    }
+    const { client, model, provider } = createAIClient();
 
-    const client = new OpenAI({ apiKey, baseURL: 'https://api.deepseek.com' });
     const prompt = this._buildAIPrompt(analysis, paramsToImprove, regressionContext, stuckContext);
 
     // Raise temperature when stuck to force more exploration
     const temperature = stuckContext && stuckContext.stuckCycles >= 3 ? 0.7 : 0.3;
     if (temperature > 0.3) console.log(`  🎲 Explore mode: temperature=${temperature} (stuck ${stuckContext.stuckCycles} cycles)`);
 
+    console.log(`  🔌 Provider: ${provider} | Model: ${model}`);
+
     const response = await client.chat.completions.create({
-      model:    process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+      model,
       messages: [
         {
           role:    'system',
