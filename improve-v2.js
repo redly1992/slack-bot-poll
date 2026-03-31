@@ -504,13 +504,12 @@ class ImproveV2 {
       ? (allSignals.filter(s => s.result === 'WIN').length / allSignals.length * 100)
       : 0;
 
-    // 3. ALWAYS backup the params that just ran (with its win rate)
-    const backupFile = this.backupCurrentParams(currentParams, currentWinRate);
     console.log(`\n📊 ${allSignals.length} graded trade(s) | Win rate: ${currentWinRate.toFixed(1)}%`);
 
-    // 4. Handle too-few signals (over-constrained params)
+    // 3. Handle too-few signals (over-constrained params OR backtest crash)
     if (allSignals.length < 5) {
       console.log('⚠️  Very few signals (<5) — params may be too restrictive.');
+      // Don't save a 0% backup — it pollutes the backup history with noise
       const best = this.findBestBackup();
       if (best) {
         console.log(`🔄 Restoring best known params: ${best.file} (${best.winRate}%)`);
@@ -519,6 +518,9 @@ class ImproveV2 {
       await this.closeDB();
       return;
     }
+
+    // 4. BACKUP the params that just ran (only when we have enough trades to judge)
+    const backupFile = this.backupCurrentParams(currentParams, currentWinRate);
 
     // 5. Compare against best win rate ever achieved
     const state = this._readState();

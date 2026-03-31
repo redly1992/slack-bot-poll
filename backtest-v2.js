@@ -119,11 +119,17 @@ class BacktestV2 {
 
   initDatabase() {
     return new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(this.dbPath, err => {
-        if (err) { reject(err); return; }
-        console.log(`📊 Database: ${this.dbPath}`);
-        this._createTables().then(resolve).catch(reject);
-      });
+      // Explicit READWRITE|CREATE avoids SQLite opening in read-only mode
+      // when orphaned WAL files are present after a crash.
+      this.db = new sqlite3.Database(
+        this.dbPath,
+        sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
+        err => {
+          if (err) { reject(err); return; }
+          console.log(`📊 Database: ${this.dbPath}`);
+          this._createTables().then(resolve).catch(reject);
+        }
+      );
     });
   }
 

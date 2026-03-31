@@ -24,7 +24,13 @@ function sleep(ms) {
 function cleanup() {
   process.stdout.write('  🧹 Cleanup... ');
   let removed = 0;
-  for (const f of ['backtest-results-v2.db', 'checkpoint-v2.json']) {
+  // Also remove WAL journal files — orphaned -shm/-wal cause SQLite READONLY errors next cycle
+  for (const f of [
+    'backtest-results-v2.db',
+    'backtest-results-v2.db-shm',
+    'backtest-results-v2.db-wal',
+    'checkpoint-v2.json',
+  ]) {
     if (fs.existsSync(f)) { fs.unlinkSync(f); removed++; }
   }
   console.log(`removed ${removed} file(s)`);
@@ -34,9 +40,10 @@ function runStep(cmd, label, cycleNumber) {
   console.log(`\n[Cycle ${cycleNumber}] ▶️  ${label}`);
   try {
     execSync(cmd, { stdio: 'inherit' });
+    return true;
   } catch (err) {
-    // Log the failure but keep the daemon alive — next cycle will retry
     console.error(`\n[Cycle ${cycleNumber}] ❌ "${label}" exited with error: ${err.message}`);
+    return false;
   }
 }
 
@@ -79,13 +86,17 @@ async function main() {
 
     // Step 2 — Backtest
     writeState({ currentStep: 'backtest', stepNumber: 2, stepStartedAt: new Date().toISOString() });
-    runStep('node backtest-v2.js', 'backtest-v2', cycleNumber);
+    const backtestOk = runStep('node backtest-v2.js', 'backtest-v2', cycleNumber);
     await sleep(2000);
 
-    // Step 3 — Improve
-    writeState({ currentStep: 'improve-v2', stepNumber: 3, stepStartedAt: new Date().toISOString() });
-    runStep('node improve-v2.js', 'improve-v2', cycleNumber);
-    await sleep(2000);
+    // Step 3 — Improve (only if backtest succeeded)
+    if (!backtestOk) {
+      console.warn(`  ⚠️  Backtest failed — skipping improve-v2, will retry next cycle`);
+    } else {
+      writeState({ currentStep: 'improve-v2', stepNumber: 3, stepStartedAt: new Date().toISOString() });
+      runStep('node improve-v2.js', 'improve-v2', cycleNumber);
+      await sleep(2000);
+    }
 
     const durationMs = Date.now() - cycleStart;
     writeState({
