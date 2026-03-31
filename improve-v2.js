@@ -267,7 +267,7 @@ class ImproveV2 {
 
   // ── AI parameter optimization ─────────────────────────────────────────────
 
-  _buildAIPrompt(analysis, paramsToImprove, regressionContext = null) {
+  _buildAIPrompt(analysis, paramsToImprove, regressionContext = null, stuckContext = null) {
     let prompt = `You are a quantitative trading strategy optimizer for a cryptocurrency bot.\n\n`;
 
     if (regressionContext) {
@@ -282,6 +282,27 @@ class ImproveV2 {
       prompt += `Make DIFFERENT adjustments than last time. The previous change was wrong.\n\n`;
     }
 
+    if (stuckContext) {
+      prompt += `## 🔄 STUCK LOOP DETECTED — ${stuckContext.stuckCycles} CYCLES WITH NO IMPROVEMENT\n`;
+      prompt += `Your recent suggestions have been OVERRIDDEN by safety caps or produced no change:\n`;
+      if (stuckContext.recentCaps && stuckContext.recentCaps.length > 0) {
+        prompt += `  Last cycle caps applied: ${stuckContext.recentCaps.join(', ')}\n`;
+      }
+      prompt += `Recent cycle history (oldest → newest):\n`;
+      for (const h of stuckContext.history) {
+        const capNote = h.caps && h.caps.length > 0 ? ` [CAPPED: ${h.caps.join(', ')}]` : '';
+        prompt += `  Cycle ${h.cycle}: winRate=${h.winRate}%, signals=${h.signals}${capNote}\n`;
+      }
+      prompt += `\n⚠️  STOP trying to change scoreThreshold — it keeps hitting the cap.\n`;
+      prompt += `Instead, try adjusting ONE OR MORE of these UNEXPLORED dimensions:\n`;
+      prompt += `  • riskManagement slAtr / tpAtr (current SL hit rate is ${stuckContext.slHitPct}% — very high if >55%)\n`;
+      prompt += `  • setupA.emaPullbackPct (tighten to filter weak pullbacks, or loosen to get more signals)\n`;
+      prompt += `  • setupA.rsiLong range (narrow it for higher-quality pullback entries)\n`;
+      prompt += `  • setupB thresholds (rsiLongMax, mfiLongMax — loosen slightly to get more extreme-reversal trades)\n`;
+      prompt += `  • filters.cooldownCandles (increase to space out signals and reduce overtrading)\n`;
+      prompt += `  • marketRegime.adxTrendMinimum (try 20-23 range; higher ADX = stronger trend = better setups)\n\n`;
+    }
+
     prompt += `## BACKTEST RESULTS ANALYSIS\n`;
     prompt += `${JSON.stringify(analysis, null, 2)}\n\n`;
     prompt += `## ${regressionContext ? 'BEST KNOWN PARAMETERS (restore from these)' : 'CURRENT STRATEGY PARAMETERS'}\n`;
@@ -289,7 +310,8 @@ class ImproveV2 {
     prompt += `## YOUR OPTIMIZATION TASK\n`;
     prompt += `Analyze the results and return improved parameters. Apply these rules:\n\n`;
     prompt += `1. **scoreThreshold**: Increase by 1 if setup win rate < 45% AND total > 5 trades.\n`;
-    prompt += `   Decrease by 1 (min 3) if setup win rate > 65% AND total < 10 trades (too few signals).\n\n`;
+    prompt += `   Decrease by 1 (min 3) if setup win rate > 65% AND total < 10 trades (too few signals).\n`;
+    prompt += `   Maximum allowed: setupA=7, setupB=6, setupC=7. If already at max, try other dimensions.\n\n`;
     prompt += `2. **enabled**: Set to false ONLY if setup win rate < 30% AND total > 8 trades.\n`;
     prompt += `   IMPORTANT: At least 2 of the 3 setups MUST remain enabled at all times.\n\n`;
     prompt += `3. **adxTrendMinimum**: Maximum value is 25. Do NOT increase above 25 — it produces zero signals.\n`;
@@ -297,9 +319,9 @@ class ImproveV2 {
     prompt += `4. **RSI ranges (setupA)**: RSI long range must be at least 12 wide (max-min >= 12).\n`;
     prompt += `   Keep rsiLong.min between 20-45, rsiLong.max between 35-60.\n`;
     prompt += `   Keep rsiShort.min between 40-65, rsiShort.max between 55-80.\n\n`;
-    prompt += `5. **riskManagement slAtr/tpAtr**: If SL hits > 60% of exits, increase slAtr by 0.2.\n`;
-    prompt += `   If TP hits < 20% of exits, decrease tpAtr by 0.3.\n\n`;
-    prompt += `6. **cooldownCandles**: Keep between 12 and 32. Increase by 4 if total signals > 200.\n\n`;
+    prompt += `5. **riskManagement slAtr/tpAtr**: If SL hits > 55% of total trades, increase slAtr by 0.2.\n`;
+    prompt += `   If TP hits < 25% of total trades, decrease tpAtr by 0.3 to make TP more achievable.\n\n`;
+    prompt += `6. **cooldownCandles**: Keep between 12 and 32. Increase by 4 if total signals > 800.\n\n`;
     prompt += `CRITICAL: Your response must produce a strategy generating AT LEAST 5-10 signals over 1 year.\n`;
     prompt += `Do not over-optimize into zero signals.\n\n`;
     prompt += `## RESPONSE\n`;
@@ -309,14 +331,18 @@ class ImproveV2 {
     return prompt;
   }
 
-  async callAI(analysis, paramsToImprove, regressionContext = null) {
+  async callAI(analysis, paramsToImprove, regressionContext = null, stuckContext = null) {
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey || apiKey.includes('your_')) {
       throw new Error('DEEPSEEK_API_KEY not configured in .env');
     }
 
     const client = new OpenAI({ apiKey, baseURL: 'https://api.deepseek.com' });
-    const prompt = this._buildAIPrompt(analysis, paramsToImprove, regressionContext);
+    const prompt = this._buildAIPrompt(analysis, paramsToImprove, regressionContext, stuckContext);
+
+    // Raise temperature when stuck to force more exploration
+    const temperature = stuckContext && stuckContext.stuckCycles >= 3 ? 0.7 : 0.3;
+    if (temperature > 0.3) console.log(`  🎲 Explore mode: temperature=${temperature} (stuck ${stuckContext.stuckCycles} cycles)`);
 
     const response = await client.chat.completions.create({
       model:    process.env.DEEPSEEK_MODEL || 'deepseek-chat',
@@ -327,7 +353,7 @@ class ImproveV2 {
         },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.2,
+      temperature,
     });
 
     return response.choices[0].message.content;
@@ -361,29 +387,37 @@ class ImproveV2 {
   }
 
   // ── Hard constraints applied to AI params to prevent self-destruction ────
+  /**
+   * Enforce hard limits on AI-generated params.
+   * Returns { params, capsApplied: string[] } so the caller can log and feed back to AI.
+   */
   enforceSafetyConstraints(params, currentParams) {
     const p = JSON.parse(JSON.stringify(params)); // deep clone
+    const caps = [];
 
     // 1. ADX minimum: cap at 25 — higher than this produces near-zero signals
     if (p.marketRegime.adxTrendMinimum > 25) {
-      console.log(`  ⚠️  ADX capped 25 (AI wanted ${p.marketRegime.adxTrendMinimum})`);
+      caps.push(`adxTrendMinimum: ${p.marketRegime.adxTrendMinimum}→25`);
       p.marketRegime.adxTrendMinimum = 25;
     }
 
     // 2. At least 2 setups must remain enabled
     const enabledCount = [p.setupA.enabled, p.setupB.enabled, p.setupC.enabled].filter(Boolean).length;
     if (enabledCount < 2) {
-      console.log(`  ⚠️  AI disabled too many setups (${3 - enabledCount} disabled) — re-enabling setupB`);
+      caps.push(`re-enabled setupB (AI disabled too many setups)`);
       p.setupB.enabled = true;
     }
 
     // 3. scoreThreshold limits per setup
-    const maxThreshold = { A: 6, B: 6, C: 7 };
+    //    Setup A max score = 8 (RSI+2, EMApull+2, Stoch+2, MACD+1, PSAR+1) — allow up to 7
+    //    Setup B max score = 8 (RSI+3, MFI+2, BB+2, Stoch+1) — allow up to 6
+    //    Setup C max score = 9 (MACD+3, 1hMACD+2, ADX+2, EMA+1, PSAR+1) — allow up to 7
+    const maxThreshold = { A: 7, B: 6, C: 7 };
     const minThreshold = { A: 3, B: 3, C: 3 };
     for (const [key, setup] of [['setupA', p.setupA], ['setupB', p.setupB], ['setupC', p.setupC]]) {
       const label = key.slice(-1);
       if (setup.scoreThreshold > maxThreshold[label]) {
-        console.log(`  ⚠️  ${key}.scoreThreshold capped at ${maxThreshold[label]} (AI wanted ${setup.scoreThreshold})`);
+        caps.push(`${key}.scoreThreshold: ${setup.scoreThreshold}→${maxThreshold[label]}`);
         setup.scoreThreshold = maxThreshold[label];
       }
       if (setup.scoreThreshold < minThreshold[label]) {
@@ -403,11 +437,14 @@ class ImproveV2 {
 
     // 5. cooldownCandles max 32 (prevents too-sparse signals)
     if (p.filters.cooldownCandles > 32) {
-      console.log(`  ⚠️  cooldownCandles capped at 32 (AI wanted ${p.filters.cooldownCandles})`);
+      caps.push(`cooldownCandles: ${p.filters.cooldownCandles}→32`);
       p.filters.cooldownCandles = 32;
     }
 
-    return p;
+    if (caps.length > 0) {
+      caps.forEach(c => console.log(`  ⚠️  Capped: ${c}`));
+    }
+    return { params: p, capsApplied: caps };
   }
 
   // ── Backup & save params ──────────────────────────────────────────────────
@@ -471,16 +508,42 @@ class ImproveV2 {
     try {
       if (fs.existsSync(STATE_FILE)) return JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
     } catch (_) {}
-    return { cycleNumber: 1, bestWinRate: 0, bestParamsFile: null };
+    return { cycleNumber: 1, bestWinRate: 0, bestParamsFile: null, cycleHistory: [], stuckCycles: 0 };
   }
 
   _updateBestWinRate(winRate, backupFile) {
     try {
       const state = this._readState();
-      state.bestWinRate   = winRate;
+      state.bestWinRate    = winRate;
       state.bestParamsFile = backupFile;
       fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
     } catch (_) {}
+  }
+
+  /** Append this cycle's result to the rolling history (keep last 8). */
+  _appendCycleHistory(winRate, signalCount, capsApplied) {
+    try {
+      const state = this._readState();
+      if (!Array.isArray(state.cycleHistory)) state.cycleHistory = [];
+      state.cycleHistory.push({
+        cycle:   state.cycleNumber || 1,
+        winRate: parseFloat(winRate.toFixed(2)),
+        signals: signalCount,
+        caps:    capsApplied,   // e.g. ["setupA.scoreThreshold: 7→6"]
+      });
+      // Keep only last 8
+      if (state.cycleHistory.length > 8) state.cycleHistory.shift();
+      // Count consecutive cycles with same win rate (± 0.1%)
+      let stuck = 0;
+      const hist = [...state.cycleHistory].reverse();
+      for (const entry of hist) {
+        if (Math.abs(entry.winRate - winRate) < 0.15) stuck++;
+        else break;
+      }
+      state.stuckCycles = stuck;
+      fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+      return stuck;
+    } catch (_) { return 0; }
   }
 
   // ── Main ──────────────────────────────────────────────────────────────────
@@ -532,7 +595,6 @@ class ImproveV2 {
       console.log(`   Last change made things WORSE — reverting to best params for AI retry...`);
     } else {
       console.log(`\n📈 Win rate: ${currentWinRate.toFixed(1)}% ${bestWinRate > 0 ? `(best was ${bestWinRate.toFixed(1)}%)` : '(first baseline)'}`);
-      // Update the best tracker
       this._updateBestWinRate(currentWinRate, backupFile);
     }
 
@@ -549,16 +611,15 @@ class ImproveV2 {
         regressionContext = {
           bestWinRate,
           currentWinRate,
-          failedParams: currentParams   // show AI what went wrong
+          failedParams: currentParams
         };
         console.log(`   AI will improve from: ${best.file} (${best.winRate}%)`);
       } else {
-        // No backup found — just use current params without regression context
         console.log('   No best backup found — proceeding with current params');
       }
     }
 
-    // 7. Build analysis + call AI
+    // 7. Build analysis + detect stuck loop
     const analysis = this.buildAnalysis(allSignals);
     console.log(`\n📊 ANALYSIS SUMMARY:`);
     console.log(`  Win Rate:   ${analysis.overall.winRate}%  (${analysis.overall.wins}W / ${analysis.overall.losses}L)`);
@@ -572,11 +633,25 @@ class ImproveV2 {
     console.log(`  ADX 25-35:  ${analysis.byAdxRange.mid.winRate}% (${analysis.byAdxRange.mid.total} trades)`);
     console.log(`  ADX >35:    ${analysis.byAdxRange.high.winRate}% (${analysis.byAdxRange.high.total} trades)`);
 
-    const aiLabel = regressionContext ? '🔁 Re-asking AI (regression recovery)' : '🤖 Calling DeepSeek AI';
+    // Detect stuck loop: append history, get stuck count
+    const lastCycleCaps = state.lastCycleCaps || [];
+    const stuckCycles = this._appendCycleHistory(currentWinRate, allSignals.length, lastCycleCaps);
+    const stuckContext = stuckCycles >= 3 ? {
+      stuckCycles,
+      history:    (this._readState().cycleHistory || []).slice(-6),
+      recentCaps: lastCycleCaps,
+      slHitPct:   parseFloat(((analysis.overall.slHits / analysis.overall.total) * 100).toFixed(1)),
+    } : null;
+    if (stuckContext) console.log(`\n⚠️  Stuck for ${stuckCycles} cycles — entering exploration mode`);
+
+    const aiLabel = regressionContext ? '🔁 Re-asking AI (regression recovery)'
+                  : stuckContext      ? '🎲 Calling AI (explore mode)'
+                  : '🤖 Calling DeepSeek AI';
     console.log(`\n${aiLabel}...`);
     let newParams = null;
+    let capsApplied = [];
     try {
-      const rawResponse = await this.callAI(analysis, paramsForAI, regressionContext);
+      const rawResponse = await this.callAI(analysis, paramsForAI, regressionContext, stuckContext);
       newParams = this.parseAIResponse(rawResponse, paramsForAI);
     } catch (err) {
       console.warn(`⚠️  AI call failed: ${err.message}`);
@@ -585,7 +660,6 @@ class ImproveV2 {
     if (!newParams) {
       console.log('ℹ️  Keeping params unchanged (AI unavailable or response invalid)');
       if (isRegression && paramsForAI !== currentParams) {
-        // Still restore best params even if AI failed
         fs.writeFileSync(PARAMS_PATH, JSON.stringify(paramsForAI, null, 2));
         console.log('   Restored best known params as fallback.');
       }
@@ -595,9 +669,11 @@ class ImproveV2 {
 
     // 8. Safety constraints
     console.log('\n🛡️  Applying safety constraints...');
-    newParams = this.enforceSafetyConstraints(newParams, paramsForAI);
+    const constraintResult = this.enforceSafetyConstraints(newParams, paramsForAI);
+    newParams   = constraintResult.params;
+    capsApplied = constraintResult.capsApplied;
 
-    // 9. Annotate and write
+    // 9. Annotate and write (persist caps so next cycle can mention them to AI)
     newParams.version         = 2;
     newParams._lastImproved   = new Date().toISOString();
     newParams._cycleNumber    = this._readState().cycleNumber || 1;
@@ -607,6 +683,12 @@ class ImproveV2 {
     newParams._description    = 'V2 Trading Strategy Parameters — auto-tuned by AI';
 
     fs.writeFileSync(PARAMS_PATH, JSON.stringify(newParams, null, 2));
+
+    try {
+      const s = this._readState();
+      s.lastCycleCaps = capsApplied;
+      fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2));
+    } catch (_) {}
 
     if (isRegression) {
       console.log(`\n✅ New params saved (recovery attempt from ${bestWinRate.toFixed(1)}% baseline)`);
