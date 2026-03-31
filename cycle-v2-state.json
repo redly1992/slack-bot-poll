@@ -5,6 +5,10 @@
   "lastCycleCompletedAt": "2026-03-31T02:38:44.237Z",
   "avgCycleDurationMs": 228174,
   "cycleNumber": 224,
-  "cycleStartedAt": "2026-03-31T02:38:44.238Z",
-  "stepStartedAt": "2026-03-31T02:38:46.241Z"
+  "cycleStartedAt": "2026-03-31T02:46:00.101Z",
+  "stepStartedAt": "2026-03-31T02:46:02.114Z",
+  "status": "running",
+  "pid": 52912,
+  "overallStartedAt": "2026-03-31T02:46:00.075Z",
+  "symbol": "BTC/USDT"
 }
